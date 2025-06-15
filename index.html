@@ -19,6 +19,12 @@
         body {
             font-family: 'Inter', sans-serif;
             font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        .container {
+            flex-grow: 1;
         }
         .tab-btn {
             transition: all 0.3s ease;
@@ -46,6 +52,10 @@
             font-size: 1rem;
             -moz-appearance: textfield;
         }
+        .input-field.error {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 2px #fecaca;
+        }
         .input-field::-webkit-outer-spin-button,
         .input-field::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -54,13 +64,39 @@
         .katex-display {
             margin: 0.5em 0;
         }
-        /* Required for chartjs-plugin-zoom to work on touch devices */
         #chart {
             touch-action: none; 
+        }
+        /* Notification Modal Styles */
+        #notification-modal {
+            transition: opacity 0.3s ease;
         }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
+
+    <!-- Notification Modal -->
+    <div id="notification-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+            </div>
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Error de Entrada</h3>
+            <div class="mt-2 px-7 py-3">
+                <p id="notification-message" class="text-sm text-gray-600">
+                    Mensaje de error aquí.
+                </p>
+            </div>
+            <div class="items-center px-4 py-3">
+                <button id="notification-close-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <div class="container mx-auto p-3 md:p-4 max-w-4xl">
         
@@ -70,20 +106,23 @@
                 <div class="text-7xl font-light mr-4 text-gray-400" style="line-height: 1;">{</div>
                 <div class="flex flex-col space-y-3">
                     <div class="flex items-center space-x-2 text-lg">
-                        <input id="a" type="number" class="input-field" placeholder="a">
+                        <input id="a" type="text" class="input-field" placeholder="a">
                         <span class="font-semibold">x +</span>
-                        <input id="b" type="number" class="input-field" placeholder="b">
+                        <input id="b" type="text" class="input-field" placeholder="b">
                         <span class="font-semibold">y =</span>
-                        <input id="c" type="number" class="input-field" placeholder="c">
+                        <input id="c" type="text" class="input-field" placeholder="c">
                     </div>
                     <div class="flex items-center space-x-2 text-lg">
-                        <input id="d" type="number" class="input-field" placeholder="d">
+                        <input id="d" type="text" class="input-field" placeholder="d">
                         <span class="font-semibold">x +</span>
-                        <input id="e" type="number" class="input-field" placeholder="e">
+                        <input id="e" type="text" class="input-field" placeholder="e">
                         <span class="font-semibold">y =</span>
-                        <input id="f" type="number" class="input-field" placeholder="f">
+                        <input id="f" type="text" class="input-field" placeholder="f">
                     </div>
                 </div>
+            </div>
+             <div class="text-center text-gray-500 text-xs mt-4">
+                <p>Puedes usar enteros (Z), reales (R, ej: `1.5` o `1,5`) y racionales (Q, ej: `3/4`).</p>
             </div>
             <div class="mt-5 flex justify-center space-x-3">
                 <button id="solveBtn" class="bg-indigo-600 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm">Resolver</button>
@@ -124,6 +163,10 @@
             </div>
         </div>
     </div>
+    
+    <footer class="text-center p-4 text-gray-500 text-sm">
+        Simulación creada por <a href="https://aulaquest.com" target="_blank" class="text-indigo-600 hover:underline font-semibold">AulaQuest</a>
+    </footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -139,6 +182,9 @@
             const showSolutionCheckbox = document.getElementById('showSolutionCheckbox');
             const graphContainer = document.getElementById('graph-container');
             const graphPlaceholder = document.getElementById('graph-placeholder');
+            const notificationModal = document.getElementById('notification-modal');
+            const notificationMessage = document.getElementById('notification-message');
+            const notificationCloseBtn = document.getElementById('notification-close-btn');
 
             // State variables
             let chartInstance = null;
@@ -154,6 +200,10 @@
                 if(getActiveTab() === 'grafico' && lastSolutionData.coeffs) {
                     solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 }
+            });
+
+            notificationCloseBtn.addEventListener('click', () => {
+                notificationModal.classList.add('hidden');
             });
             
             tabs.forEach(tab => {
@@ -190,6 +240,11 @@
             
             // --- UTILITY FUNCTIONS ---
 
+            function showNotification(message) {
+                notificationMessage.textContent = message;
+                notificationModal.classList.remove('hidden');
+            }
+
             function renderMathInElement(elem) {
                 // Uses KaTeX to render LaTeX expressions
                 if (elem && window.renderMathInElement) {
@@ -200,14 +255,53 @@
                 }
             }
             
+            function parseInput(value) {
+                if (value === null || value.trim() === '') {
+                    return null;
+                }
+                // Standardize decimal separator to a period
+                value = value.trim().replace(',', '.');
+                
+                if (value.includes('/')) {
+                    const parts = value.split('/');
+                    if (parts.length === 2) {
+                        const numerator = parseFloat(parts[0]);
+                        const denominator = parseFloat(parts[1]);
+                        // Check for valid numbers and specifically for division by zero
+                        if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+                            return numerator / denominator;
+                        }
+                    }
+                    return null; // Invalid fraction format or division by zero
+                } else {
+                    const num = parseFloat(value);
+                    return isNaN(num) ? null : num;
+                }
+            }
+
             function getCoefficients() {
                 // Reads the values from the input fields
                 const values = {};
-                ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
-                    const input = document.getElementById(id);
-                    // Use 0 as default if empty, but parseFloat for actual values
-                    values[id] = input.value === '' ? null : parseFloat(input.value);
-                });
+                const inputIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+                let hasError = false;
+
+                // Clear previous errors
+                inputIds.forEach(id => document.getElementById(id).classList.remove('error'));
+
+                for (const id of inputIds) {
+                    const inputEl = document.getElementById(id);
+                    const parsedValue = parseInput(inputEl.value);
+                    if (parsedValue === null) {
+                        inputEl.classList.add('error');
+                        hasError = true;
+                    }
+                    values[id] = parsedValue;
+                }
+
+                if (hasError) {
+                    return null; // Signal that there was a parsing error
+                }
+                
                 return values;
             }
 
@@ -222,7 +316,9 @@
             function resetSimulator() {
                 // Clears all inputs and results
                  ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
-                     document.getElementById(id).value = '';
+                     const input = document.getElementById(id);
+                     input.value = '';
+                     input.classList.remove('error');
                  });
                  ['sustitucion', 'igualacion', 'reduccion', 'graph-info'].forEach(id => {
                      const el = document.getElementById(id);
@@ -288,8 +384,8 @@
             function solve() {
                 // Main function to trigger the solving process
                 const coeffs = getCoefficients();
-                if (Object.values(coeffs).some(v => v === null)) {
-                    // Alert or indicate that fields must be filled
+                if (coeffs === null) {
+                    showNotification("Por favor, revisa los campos en rojo. Asegúrate de que todos los valores son correctos, no están vacíos y no hay divisiones por cero.");
                     return;
                 }
 
@@ -365,15 +461,15 @@
                 if (caseType === 'unica') {
                     const {x, y} = solution;
                      if (Math.abs(b) > 1e-9) { // Prefer solving for y from eq1 if b is not zero
-                        stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${a}x ${formatLatexSign(b)}y = ${c} \\implies y = \\frac{${c} ${formatLatexSign(-a)}x}{${b}} $$`);
-                        stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${d}x ${formatLatexSign(e)}\\left(\\frac{${c} ${formatLatexSign(-a)}x}{${b}}\\right) = ${f} $$`);
+                        stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} \\implies y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$`);
+                        stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}x ${formatLatexSign(e)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}}\\right) = ${formatNumberSmart(f)} $$`);
                         stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${c} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${b}} \\implies y = ${formatNumberSmart(y)} $$`);
+                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
                      } else if (Math.abs(a) > 1e-9) { // Fallback to solving for x if a is not zero
-                         stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${a}x = ${c} ${formatLatexSign(-b)}y \\implies x = \\frac{${c} ${formatLatexSign(-b)}y}{${a}} $$`);
-                         stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${d}\\left(\\frac{${c} ${formatLatexSign(-b)}y}{${a}}\\right) ${formatLatexSign(e)}y = ${f} $$`);
+                         stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x = ${formatNumberSmart(c)} ${formatLatexSign(-b)}y \\implies x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$`);
+                         stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}}\\right) ${formatLatexSign(e)}y = ${formatNumberSmart(f)} $$`);
                          stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
-                         stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${c} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${a}} \\implies x = ${formatNumberSmart(x)} $$`);
+                         stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
                     } else { // Should not happen with valid equations
                         stepsHtml = "No se puede despejar en la primera ecuación."
                     }
@@ -386,15 +482,15 @@
                 if (caseType === 'unica') {
                     const {x, y} = solution;
                      if (Math.abs(a) > 1e-9 && Math.abs(d) > 1e-9) { // Prefer solving for x
-                        stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = \\frac{${c} ${formatLatexSign(-b)}y}{${a}} $$ Ec. 2: $$ x = \\frac{${f} ${formatLatexSign(-e)}y}{${d}} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ \\frac{${c} ${formatLatexSign(-b)}y}{${a}} = \\frac{${f} ${formatLatexSign(-e)}y}{${d}} $$`);
+                        stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$ Ec. 2: $$ x = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
+                        stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
                         stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
-                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${c} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${a}} \\implies x = ${formatNumberSmart(x)} $$`);
+                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
                      } else if (Math.abs(b) > 1e-9 && Math.abs(e) > 1e-9) { // Fallback to solving for y
-                        stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = \\frac{${c} ${formatLatexSign(-a)}x}{${b}} $$ Ec. 2: $$ y = \\frac{${f} ${formatLatexSign(-d)}x}{${e}} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ \\frac{${c} ${formatLatexSign(-a)}x}{${b}} = \\frac{${f} ${formatLatexSign(-d)}x}{${e}} $$`);
+                        stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$ Ec. 2: $$ y = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
+                        stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
                         stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${c} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${b}} \\implies y = ${formatNumberSmart(y)} $$`);
+                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
                     } else {
                         stepsHtml = "No se puede despejar la misma variable en ambas ecuaciones.";
                     }
@@ -496,7 +592,7 @@
                 }
 
                 // 7. Define the function that updates line data and re-centers the chart
-                const handlePanOrZoom = (chart) => {
+                const handleZoom = (chart) => {
                     if (!chart || !chart.scales || !chart.scales.x) return;
 
                     // Re-center the chart on the solution if it exists
@@ -548,7 +644,7 @@
                                 pan: {
                                     enabled: isPanEnabled, // Panning is conditional now
                                     mode: 'xy',
-                                    onPanComplete: ({chart}) => handlePanOrZoom(chart)
+                                    onPanComplete: ({chart}) => handleZoom(chart)
                                 },
                                 zoom: {
                                     drag: {
@@ -561,7 +657,7 @@
                                         enabled: true 
                                     }, 
                                     mode: 'xy', 
-                                    onZoomComplete: ({chart}) => handlePanOrZoom(chart)
+                                    onZoomComplete: ({chart}) => handleZoom(chart)
                                 }
                             }
                         }
