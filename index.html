@@ -43,6 +43,10 @@
             margin-bottom: 0.75rem;
             border-radius: 0.25rem;
         }
+        .step-content {
+            overflow-x: auto; /* Permite scroll horizontal en ecuaciones largas */
+            padding-bottom: 0.5rem; /* Espacio para la barra de scroll */
+        }
         .input-field {
             width: 55px;
             text-align: center;
@@ -61,8 +65,8 @@
             -webkit-appearance: none;
             margin: 0;
         }
-        .katex-display {
-            margin: 0.5em 0;
+        .katex-display > .katex {
+             white-space: nowrap; /* Evita que KaTeX rompa la línea */
         }
         #chart {
             touch-action: none; 
@@ -70,6 +74,12 @@
         /* Notification Modal Styles */
         #notification-modal {
             transition: opacity 0.3s ease;
+        }
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 24px;
+            line-height: 1;
         }
     </style>
 </head>
@@ -155,6 +165,11 @@
                     </div>
                     <div class="relative" style="height: 65vh; max-height: 500px;">
                         <canvas id="chart"></canvas>
+                         <!-- Zoom Buttons -->
+                        <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
+                            <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
+                            <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
+                        </div>
                     </div>
                 </div>
                 <div id="graph-placeholder" class="text-center text-gray-500 pt-16">
@@ -185,6 +200,9 @@
             const notificationModal = document.getElementById('notification-modal');
             const notificationMessage = document.getElementById('notification-message');
             const notificationCloseBtn = document.getElementById('notification-close-btn');
+            const zoomInBtn = document.getElementById('zoom-in-btn');
+            const zoomOutBtn = document.getElementById('zoom-out-btn');
+            const zoomControls = document.getElementById('zoom-controls');
 
             // State variables
             let chartInstance = null;
@@ -196,7 +214,6 @@
             resetBtn.addEventListener('click', resetSimulator);
             
             showSolutionCheckbox.addEventListener('change', () => {
-                // Redraw the graph when the checkbox is toggled
                 if(getActiveTab() === 'grafico' && lastSolutionData.coeffs) {
                     solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 }
@@ -205,10 +222,23 @@
             notificationCloseBtn.addEventListener('click', () => {
                 notificationModal.classList.add('hidden');
             });
+
+            zoomInBtn.addEventListener('click', () => {
+                if (chartInstance) {
+                    chartInstance.zoom(1.1); // Zoom in by 10%
+                    handleZoom(chartInstance);
+                }
+            });
+
+            zoomOutBtn.addEventListener('click', () => {
+                if (chartInstance) {
+                    chartInstance.zoom(0.9); // Zoom out by 10%
+                    handleZoom(chartInstance);
+                }
+            });
             
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
-                    // Handle tab switching
                     tabs.forEach(t => t.classList.remove('active'));
                     document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
                     
@@ -216,9 +246,7 @@
                     const activeTabContent = document.getElementById(tab.dataset.tab);
                     activeTabContent.classList.remove('hidden');
                     
-                    // If a solution exists, render the content for the new tab
                     if (Object.keys(lastSolutionData).length > 0) {
-                        // Special handling for the graph tab
                         if (tab.dataset.tab === 'grafico') {
                             solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                         }
@@ -227,7 +255,6 @@
                 });
             });
 
-            // Handle showing/hiding step-by-step solutions
             contentPanels.addEventListener('change', function(e) {
                 if (e.target.classList.contains('show-steps-checkbox')) {
                     const targetId = e.target.dataset.target;
@@ -246,7 +273,6 @@
             }
 
             function renderMathInElement(elem) {
-                // Uses KaTeX to render LaTeX expressions
                 if (elem && window.renderMathInElement) {
                     window.renderMathInElement(elem, {
                         delimiters: [ {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false} ],
@@ -256,10 +282,7 @@
             }
             
             function parseInput(value) {
-                if (value === null || value.trim() === '') {
-                    return null;
-                }
-                // Standardize decimal separator to a period
+                if (value === null || value.trim() === '') return null;
                 value = value.trim().replace(',', '.');
                 
                 if (value.includes('/')) {
@@ -267,12 +290,11 @@
                     if (parts.length === 2 && parts[0].trim() !== '' && parts[1].trim() !== '') {
                         const numerator = parseFloat(parts[0]);
                         const denominator = parseFloat(parts[1]);
-                        // Check for valid numbers and specifically for division by zero
                         if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
                             return numerator / denominator;
                         }
                     }
-                    return null; // Invalid fraction format or division by zero
+                    return null; 
                 } else {
                     const num = parseFloat(value);
                     return isNaN(num) ? null : num;
@@ -280,12 +302,10 @@
             }
 
             function getCoefficients() {
-                // Reads the values from the input fields
                 const values = {};
                 const inputIds = ['a', 'b', 'c', 'd', 'e', 'f'];
                 let hasError = false;
 
-                // Clear previous errors
                 inputIds.forEach(id => document.getElementById(id).classList.remove('error'));
 
                 for (const id of inputIds) {
@@ -297,16 +317,10 @@
                     }
                     values[id] = parsedValue;
                 }
-
-                if (hasError) {
-                    return null; // Signal that there was a parsing error
-                }
-                
-                return values;
+                return hasError ? null : values;
             }
 
             function generateRandomEquations() {
-                // Fills input fields with random integers and solves
                 ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
                     document.getElementById(id).value = Math.floor(Math.random() * 21) - 10;
                 });
@@ -314,7 +328,6 @@
             }
 
             function resetSimulator() {
-                // Clears all inputs and results
                  ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
                      const input = document.getElementById(id);
                      input.value = '';
@@ -325,7 +338,6 @@
                      if (el) el.innerHTML = '';
                  });
                  
-                 // Hide graph and show placeholder
                  graphContainer.classList.add('hidden');
                  graphPlaceholder.classList.remove('hidden');
                  showSolutionCheckbox.checked = false;
@@ -336,21 +348,17 @@
                  }
                  lastSolutionData = {};
 
-                 // Clear the content of all tabs
                  document.querySelectorAll('.tab-content').forEach(panel => {
-                    if(panel.id !== 'grafico') {
-                        panel.innerHTML = '';
-                    }
+                    if(panel.id !== 'grafico') panel.innerHTML = '';
                  });
             }
             
             // --- FORMATTING FUNCTIONS ---
 
             function formatNumberSmart(num) {
-                // Formats numbers as integers if possible, otherwise to 3 decimal places
                 if (num === null || num === undefined) return '0';
                 const numFloat = parseFloat(num);
-                if (Math.abs(numFloat - Math.round(numFloat)) < 1e-9) { // Check for near-integer
+                if (Math.abs(numFloat - Math.round(numFloat)) < 1e-9) {
                     return Math.round(numFloat).toString();
                 } else {
                     return parseFloat(numFloat.toFixed(3)).toString().replace(/(\.0+|0+)$/, '');
@@ -358,31 +366,26 @@
             }
 
             function formatLatexSign(num) {
-                // Formats a number for LaTeX with a leading sign
-                if (Math.abs(num) < 1e-9) return ''; // Don't show zero terms
+                if (Math.abs(num) < 1e-9) return '';
                 const absNum = Math.abs(num);
                 const formattedNum = formatNumberSmart(absNum);
                 return num < 0 ? `- ${formattedNum}` : `+ ${formattedNum}`;
             }
             
             function createStep(title, content) {
-                // Creates HTML for a single step in the solution
                 return `<div class="solution-step">
                             <h4 class="font-semibold text-base mb-2 text-indigo-700">${title}</h4>
-                            <div class="text-base">${content}</div>
+                            <div class="step-content">${content}</div>
                         </div>`;
             }
 
             function getActiveTab() {
-                // Gets the ID of the currently active tab
-                const activeTabEl = document.querySelector('.tab-btn.active');
-                return activeTabEl ? activeTabEl.dataset.tab : 'sustitucion';
+                return document.querySelector('.tab-btn.active')?.dataset.tab || 'sustitucion';
             }
 
             // --- CORE SOLVER FUNCTIONS ---
 
             function solve() {
-                // Main function to trigger the solving process
                 const coeffs = getCoefficients();
                 if (coeffs === null) {
                     showNotification("Por favor, revisa los campos en rojo. Asegúrate de que todos los valores son correctos, no están vacíos y no hay divisiones por cero.");
@@ -393,38 +396,27 @@
                 const { a, b, c, d, e, f } = coeffs;
                 const determinant = a * e - b * d;
                 
-                // Determine the case: unique, infinite, or no solution
-                if (Math.abs(determinant) > 1e-9) { // Using a small epsilon for float comparison
-                    const x = (c * e - b * f) / determinant;
-                    const y = (a * f - c * d) / determinant;
-                    lastSolutionData.solution = { x, y };
+                if (Math.abs(determinant) > 1e-9) {
+                    lastSolutionData.solution = { x: (c * e - b * f) / determinant, y: (a * f - c * d) / determinant };
                     lastSolutionData.caseType = 'unica';
                 } else {
                     lastSolutionData.solution = null;
-                    if (Math.abs(a * f - c * d) < 1e-9 && Math.abs(c * e - b * f) < 1e-9) {
-                        lastSolutionData.caseType = "infinitas";
-                    } else {
-                        lastSolutionData.caseType = "paralelas";
-                    }
+                    lastSolutionData.caseType = (Math.abs(a * f - c * d) < 1e-9 && Math.abs(c * e - b * f) < 1e-9) ? "infinitas" : "paralelas";
                 }
                 
-                // Calculate solutions for all algebraic methods
                 solveBySustitucion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 solveByIgualacion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 solveByReduccion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
 
-                // Update the currently active tab
                 const activeTab = getActiveTab();
                 if (activeTab === 'grafico') {
                     solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 }
                 
-                // Render LaTeX in the currently active tab's content
                 renderMathInElement(document.getElementById(activeTab));
             }
 
             function buildAlgebraicMethodUI(method, title, stepsHtml, solution, caseType) {
-                 // Constructs the UI for the algebraic methods tabs
                 let finalSolutionHtml = '';
                 if (caseType === 'unica') {
                     finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
@@ -460,18 +452,18 @@
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                     if (Math.abs(b) > 1e-9) { // Prefer solving for y from eq1 if b is not zero
+                     if (Math.abs(b) > 1e-9) {
                         stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} \\implies y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$`);
                         stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}x ${formatLatexSign(e)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}}\\right) = ${formatNumberSmart(f)} $$`);
                         stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
                         stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
-                     } else if (Math.abs(a) > 1e-9) { // Fallback to solving for x if a is not zero
+                     } else if (Math.abs(a) > 1e-9) {
                          stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x = ${formatNumberSmart(c)} ${formatLatexSign(-b)}y \\implies x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$`);
                          stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}}\\right) ${formatLatexSign(e)}y = ${formatNumberSmart(f)} $$`);
                          stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
                          stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
-                    } else { // Should not happen with valid equations
-                        stepsHtml = "No se puede despejar en la primera ecuación."
+                    } else {
+                        stepsHtml = createStep('Error', 'No se puede despejar en la primera ecuación.');
                     }
                 }
                 buildAlgebraicMethodUI('sustitucion', 'Método de Sustitución', stepsHtml, solution, caseType);
@@ -481,45 +473,67 @@
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                     if (Math.abs(a) > 1e-9 && Math.abs(d) > 1e-9) { // Prefer solving for x
+                     if (Math.abs(a) > 1e-9 && Math.abs(d) > 1e-9) {
                         stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$ Ec. 2: $$ x = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
                         stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
                         stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
                         stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
-                     } else if (Math.abs(b) > 1e-9 && Math.abs(e) > 1e-9) { // Fallback to solving for y
+                     } else if (Math.abs(b) > 1e-9 && Math.abs(e) > 1e-9) {
                         stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$ Ec. 2: $$ y = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
                         stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
                         stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
                         stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
                     } else {
-                        stepsHtml = "No se puede despejar la misma variable en ambas ecuaciones.";
+                        stepsHtml = createStep('Error', 'No se puede despejar la misma variable en ambas ecuaciones.');
                     }
                 }
                 buildAlgebraicMethodUI('igualacion', 'Método de Igualación', stepsHtml, solution, caseType);
             }
 
             function solveByReduccion({a, b, c, d, e, f}, solution, caseType) {
+                // Special case: One of the variables is already eliminated.
+                if (caseType === 'unica' && (a === 0 || b === 0 || d === 0 || e === 0)) {
+                    const container = document.getElementById('reduccion');
+                    const finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                        <h4 class="text-base font-bold text-green-800">Solución Final</h4>
+                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${formatNumberSmart(solution.x)} \\quad , \\quad y = ${formatNumberSmart(solution.y)} $$</p>
+                    </div>`;
+                    
+                    const explanationHtml = createStep(
+                        'Nota sobre el Método de Reducción',
+                        `Cuando el coeficiente de una variable es 0, esa variable ya está prácticamente despejada en una de las ecuaciones. <br><br> En estos casos, el método de reducción no es el más práctico. La solución se encuentra de forma mucho más directa por <b>sustitución</b>.`
+                    );
+
+                    container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">Método de Reducción</h3>${finalSolutionHtml}${explanationHtml}`;
+                    renderMathInElement(container); // Render LaTeX in the new content
+                    return; // Exit the function after handling the special case
+                }
+
+                // Default case: Standard reduction method
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                    stepsHtml += createStep('1. Multiplicar para eliminar $x$', `Multiplicamos Ec. 1 por $(${formatNumberSmart(d)})$ y Ec. 2 por $(${formatNumberSmart(-a)})$ para que los coeficientes de $x$ sean opuestos.`);
-                    stepsHtml += `$$ \\begin{cases} (${formatNumberSmart(a)})x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} & \\xrightarrow{\\times ${formatNumberSmart(d)}} \\\\ (${formatNumberSmart(d)})x ${formatLatexSign(e)}y = ${formatNumberSmart(f)} & \\xrightarrow{\\times ${formatNumberSmart(-a)}} \\end{cases} \\quad \\implies \\quad \\begin{cases} ${formatNumberSmart(a*d)}x ${formatLatexSign(b*d)}y = ${formatNumberSmart(c*d)} \\\\ ${formatNumberSmart(d*(-a))}x ${formatLatexSign(e*(-a))}y = ${formatNumberSmart(f*(-a))} \\end{cases} $$`;
+                    const step1Content = `$$ \\begin{cases} (${formatNumberSmart(a)})x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} & \\xrightarrow{\\times ${formatNumberSmart(d)}} \\\\ (${formatNumberSmart(d)})x ${formatLatexSign(e)}y = ${formatNumberSmart(f)} & \\xrightarrow{\\times ${formatNumberSmart(-a)}} \\end{cases} \\quad \\implies \\quad \\begin{cases} ${formatNumberSmart(a*d)}x ${formatLatexSign(b*d)}y = ${formatNumberSmart(c*d)} \\\\ ${formatNumberSmart(d*(-a))}x ${formatLatexSign(e*(-a))}y = ${formatNumberSmart(f*(-a))} \\end{cases} $$`;
+                    stepsHtml += createStep('1. Multiplicar para eliminar $x$', step1Content);
                     stepsHtml += createStep('2. Sumar las nuevas ecuaciones para encontrar $y$', `Al sumar las dos ecuaciones, el término con $x$ se cancela: $$ (${formatNumberSmart(b*d + e*-a)})y = ${formatNumberSmart(c*d + f*-a)} \\implies y = ${formatNumberSmart(y)} $$`);
                     stepsHtml += createStep('3. Encontrar $x$ sustituyendo $y$ en la Ec. 1', `$$ ${formatNumberSmart(a)}x ${formatLatexSign(b)}(${formatNumberSmart(y)}) = ${formatNumberSmart(c)} \\implies x = ${formatNumberSmart(x)} $$`);
                 }
+                
+                // Use the generic builder for standard cases (unica, infinitas, paralelas)
                 buildAlgebraicMethodUI('reduccion', 'Método de Reducción', stepsHtml, solution, caseType);
             }
 
             // --- GRAPHICAL METHOD IMPLEMENTATION ---
 
+            let handleZoom; // Declare here to be accessible in chart options
+
             function solveByGrafico({a, b, c, d, e, f}, solution, caseType) {
-                // Show graph area, hide placeholder
                 graphContainer.classList.remove('hidden');
                 graphPlaceholder.classList.add('hidden');
+                zoomControls.classList.remove('hidden');
                 
                 const graphInfoDiv = document.getElementById('graph-info');
                 
-                // 1. Display explicit equations for the user
                 let eq1Text = (Math.abs(b) > 1e-9) 
                     ? `Recta 1 (azul): $y = ${formatNumberSmart(-a/b)}x ${formatLatexSign(c/b)}$`
                     : `Recta 1 (azul): $x = ${formatNumberSmart(c/a)}$ (Recta Vertical)`;
@@ -530,48 +544,33 @@
                 graphInfoDiv.innerHTML = createStep('Ecuaciones en forma explícita ($y=mx+n$)', `${eq1Text}<br>${eq2Text}`);
                 renderMathInElement(graphInfoDiv);
 
-                // 2. Prepare canvas and destroy old chart
                 const canvas = document.getElementById('chart');
                 if (!canvas) return;
-                const ctx = canvas.getContext('2d');
-                if (chartInstance) {
-                    chartInstance.destroy();
-                }
+                if (chartInstance) chartInstance.destroy();
 
-                // 3. Helper functions to generate line data dynamically based on axis range
                 const generateLineData = (m, n, range) => [{x: range.min, y: m * range.min + n}, {x: range.max, y: m * range.max + n}];
                 const generateVerticalLineData = (k, range) => [{x: k, y: range.min}, {x: k, y: range.max}];
 
-                // 4. Determine initial view boundaries for the chart
                 let minX, maxX, minY, maxY;
                 const PADDING = 10;
                 if (caseType === 'unica' && solution) {
                     const solX = parseFloat(solution.x);
                     const solY = parseFloat(solution.y);
-                    const rangeX = PADDING;
-                    const rangeY = PADDING;
-                    minX = solX - rangeX;
-                    maxX = solX + rangeX;
-                    minY = solY - rangeY;
-                    maxY = solY + rangeY;
+                    minX = solX - PADDING;
+                    maxX = solX + PADDING;
+                    minY = solY - PADDING;
+                    maxY = solY + PADDING;
                 } else {
                     minX = -PADDING; maxX = PADDING;
                     minY = -PADDING; maxY = PADDING;
                 }
 
-                // 5. Pre-calculate initial data for the lines
                 const initialXRange = { min: minX, max: maxX };
                 const initialYRange = { min: minY, max: maxY };
 
-                let line1InitialData = [];
-                if (Math.abs(b) > 1e-9) line1InitialData = generateLineData(-a / b, c / b, initialXRange);
-                else if (Math.abs(a) > 1e-9) line1InitialData = generateVerticalLineData(c / a, initialYRange);
-
-                let line2InitialData = [];
-                if (Math.abs(e) > 1e-9) line2InitialData = generateLineData(-d / e, f / e, initialXRange);
-                else if (Math.abs(d) > 1e-9) line2InitialData = generateVerticalLineData(f / d, initialYRange);
+                let line1InitialData = (Math.abs(b) > 1e-9) ? generateLineData(-a / b, c / b, initialXRange) : (Math.abs(a) > 1e-9 ? generateVerticalLineData(c / a, initialYRange) : []);
+                let line2InitialData = (Math.abs(e) > 1e-9) ? generateLineData(-d / e, f / e, initialXRange) : (Math.abs(d) > 1e-9 ? generateVerticalLineData(f / d, initialYRange) : []);
                 
-                // 6. Create datasets with the initial data
                 const datasets = [
                     { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line1InitialData },
                     { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line2InitialData }
@@ -579,83 +578,57 @@
                 
                 let chartTitle = 'Gráfico del Sistema';
                 if (caseType === 'unica' && showSolutionCheckbox.checked) {
-                    datasets.push({
-                        label: `Solución`, data: [solution], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter'
-                    });
+                    datasets.push({ label: `Solución`, data: [solution], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' });
                     chartTitle = `Punto de corte: (${formatNumberSmart(solution.x)}, ${formatNumberSmart(solution.y)})`;
                 } else if (caseType === 'infinitas') {
                     chartTitle = "Infinitas Soluciones: Las rectas son coincidentes.";
-                    datasets[1].borderColor = '#60a5fa'; // Make second line a lighter blue
-                    datasets[1].borderDash = [5, 5]; // and dashed to show it's overlapping
+                    datasets[1].borderColor = '#60a5fa';
+                    datasets[1].borderDash = [5, 5];
                 } else if (caseType === 'paralelas') {
                     chartTitle = "Sin Solución: Las rectas son paralelas.";
                 }
 
-                // 7. Define the function that updates line data and re-centers the chart
-                const handleZoom = (chart) => {
+                handleZoom = (chart) => {
                     if (!chart || !chart.scales || !chart.scales.x) return;
-
-                    // Re-center the chart on the solution if it exists
                     if (caseType === 'unica' && solution) {
                         const solX = parseFloat(solution.x);
                         const solY = parseFloat(solution.y);
-
                         const width = chart.scales.x.max - chart.scales.x.min;
                         const height = chart.scales.y.max - chart.scales.y.min;
-
                         chart.scales.x.min = solX - width / 2;
                         chart.scales.x.max = solX + width / 2;
                         chart.scales.y.min = solY - height / 2;
                         chart.scales.y.max = solY + height / 2;
                     }
 
-                    // Update the lines to fit the new viewport
                     const xRange = { min: chart.scales.x.min, max: chart.scales.x.max };
                     const yRange = { min: chart.scales.y.min, max: chart.scales.y.max };
-
-                    if (chart.data.datasets[0]) {
-                        if (Math.abs(b) > 1e-9) chart.data.datasets[0].data = generateLineData(-a / b, c / b, xRange);
-                        else if (Math.abs(a) > 1e-9) chart.data.datasets[0].data = generateVerticalLineData(c / a, yRange);
-                    }
-                    if (chart.data.datasets[1]) {
-                        if (Math.abs(e) > 1e-9) chart.data.datasets[1].data = generateLineData(-d / e, f / e, xRange);
-                        else if (Math.abs(d) > 1e-9) chart.data.datasets[1].data = generateVerticalLineData(f / d, yRange);
-                    }
+                    
+                    chart.data.datasets[0].data = (Math.abs(b) > 1e-9) ? generateLineData(-a/b, c/b, xRange) : (Math.abs(a) > 1e-9 ? generateVerticalLineData(c/a, yRange) : []);
+                    chart.data.datasets[1].data = (Math.abs(e) > 1e-9) ? generateLineData(-d/e, f/e, xRange) : (Math.abs(d) > 1e-9 ? generateVerticalLineData(f/d, yRange) : []);
                     chart.update('none');
                 };
                 
-                // Enable panning only if there is NOT a unique solution
                 const isPanEnabled = caseType !== 'unica';
 
-                // 8. Create the chart instance
-                chartInstance = new Chart(ctx, {
+                chartInstance = new Chart(document.getElementById('chart').getContext('2d'), {
                     data: { datasets: datasets },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'linear', position: 'bottom', min: minX, max: maxX, title: { display: true, text: 'Eje X' }, grid: { color: (context) => (context.tick.value === 0) ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (context) => (context.tick.value === 0) ? 2 : 1 }},
-                            y: { min: minY, max: maxY, title: { display: true, text: 'Eje Y' }, grid: { color: (context) => (context.tick.value === 0) ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (context) => (context.tick.value === 0) ? 2 : 1 }}
+                            x: { type: 'linear', position: 'bottom', min: minX, max: maxX, title: { display: true, text: 'Eje X' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }},
+                            y: { min: minY, max: maxY, title: { display: true, text: 'Eje Y' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }}
                         },
                         plugins: {
                             title: { display: true, text: chartTitle, font: { size: 16 } },
                             legend: { position: 'top', labels: { font: { size: 12 } } },
                             zoom: {
-                                pan: {
-                                    enabled: isPanEnabled, // Panning is conditional now
-                                    mode: 'xy',
-                                    onPanComplete: ({chart}) => handleZoom(chart)
-                                },
+                                pan: { enabled: isPanEnabled, mode: 'xy', onPanComplete: ({chart}) => handleZoom(chart) },
                                 zoom: {
-                                    drag: {
-                                        enabled: false // Explicitly disable drag-to-zoom to avoid conflicts
-                                    },
-                                    wheel: { 
-                                        enabled: true 
-                                    }, 
-                                    pinch: { 
-                                        enabled: true 
-                                    }, 
+                                    drag: { enabled: false },
+                                    wheel: { enabled: true }, 
+                                    pinch: { enabled: true }, 
                                     mode: 'xy', 
                                     onZoomComplete: ({chart}) => handleZoom(chart)
                                 }
