@@ -264,7 +264,7 @@
                 
                 if (value.includes('/')) {
                     const parts = value.split('/');
-                    if (parts.length === 2) {
+                    if (parts.length === 2 && parts[0].trim() !== '' && parts[1].trim() !== '') {
                         const numerator = parseFloat(parts[0]);
                         const denominator = parseFloat(parts[1]);
                         // Check for valid numbers and specifically for division by zero
