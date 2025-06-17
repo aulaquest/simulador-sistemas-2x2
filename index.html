@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Ecuaciones Lineales 2x2</title>
+    <title>Simulador de Ecuaciones Lineales 2x2 (Fraccionario)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Plugin para zoom y pan en el gráfico -->
@@ -132,8 +132,9 @@
                 </div>
             </div>
              <div class="text-center text-gray-500 text-xs mt-4">
-                <p>Puedes usar enteros (Z), reales (R, ej: `1.5` o `1,5`) y racionales (Q, ej: `3/4`).</p>
-            </div>
+                 <p>Puedes usar <strong>enteros</strong> (p. ej. `5`), <strong>racionales</strong> (p. ej. `3/4`) y <strong>decimales</strong> (p. ej. `1.5` o `1,5`).</p>
+                 <p>Los decimales se convertirán automáticamente a su fracción equivalente.</p>
+             </div>
             <div class="mt-5 flex justify-center space-x-3">
                 <button id="solveBtn" class="bg-indigo-600 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm">Resolver</button>
                 <button id="randomBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-5 text-base rounded-lg hover:bg-gray-300 transition duration-300">Aleatorio</button>
@@ -156,25 +157,25 @@
             <div id="reduccion" class="tab-content hidden"></div>
             <div id="grafico" class="tab-content hidden">
                  <div id="graph-container" class="hidden">
-                    <div id="graph-info"></div>
-                    <div class="text-center my-3">
-                        <label for="showSolutionCheckbox" class="cursor-pointer text-base">
-                            <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500">
-                            Mostrar punto de corte
-                        </label>
-                    </div>
-                    <div class="relative" style="height: 65vh; max-height: 500px;">
-                        <canvas id="chart"></canvas>
-                         <!-- Zoom Buttons -->
-                        <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
-                            <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
-                            <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
-                        </div>
-                    </div>
-                </div>
-                <div id="graph-placeholder" class="text-center text-gray-500 pt-16">
-                    <p>Introduce los coeficientes del sistema de ecuaciones y pulsa "Resolver" para generar el gráfico.</p>
-                </div>
+                     <div id="graph-info"></div>
+                     <div class="text-center my-3">
+                         <label for="showSolutionCheckbox" class="cursor-pointer text-base">
+                             <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500">
+                             Mostrar punto de corte
+                         </label>
+                     </div>
+                     <div class="relative" style="height: 65vh; max-height: 500px;">
+                         <canvas id="chart"></canvas>
+                          <!-- Zoom Buttons -->
+                         <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
+                             <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
+                             <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
+                         </div>
+                     </div>
+                 </div>
+                 <div id="graph-placeholder" class="text-center text-gray-500 pt-16">
+                     <p>Introduce los coeficientes del sistema de ecuaciones y pulsa "Resolver" para generar el gráfico.</p>
+                 </div>
             </div>
         </div>
     </div>
@@ -184,9 +185,138 @@
     </footer>
 
     <script>
+        /**
+         * ----------------------------------------------------------------
+         * Objeto para manejar Fracciones (aritmética y formato)
+         * ----------------------------------------------------------------
+         */
+        const Fraction = {
+            // Máximo común divisor (Euclidean algorithm)
+            gcd: (a, b) => {
+                a = Math.abs(a);
+                b = Math.abs(b);
+                while (b) {
+                    [a, b] = [b, a % b];
+                }
+                return a;
+            },
+
+            // Simplifica una fracción
+            simplify: ({ num, den }) => {
+                if (den === 0) {
+                    throw new Error("Denominator cannot be zero.");
+                }
+                if (num === 0) {
+                    return { num: 0, den: 1 };
+                }
+                const commonDivisor = Fraction.gcd(num, den);
+                let simplifiedNum = num / commonDivisor;
+                let simplifiedDen = den / commonDivisor;
+                
+                // Ensure sign is on the numerator
+                if (simplifiedDen < 0) {
+                    simplifiedDen = -simplifiedDen;
+                    simplifiedNum = -simplifiedNum;
+                }
+                
+                return { num: simplifiedNum, den: simplifiedDen };
+            },
+            
+            // Crea una fracción desde un string o número
+            create: (value) => {
+                if (typeof value === 'object' && value !== null && 'num' in value && 'den' in value) {
+                    return value; // Already a fraction
+                }
+                if (value === null || String(value).trim() === '') return null;
+                
+                let strValue = String(value).trim().replace(',', '.');
+                
+                if (strValue.includes('/')) {
+                    const parts = strValue.split('/');
+                    if (parts.length === 2) {
+                        const num = parseInt(parts[0], 10);
+                        const den = parseInt(parts[1], 10);
+                        if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                            return Fraction.simplify({ num, den });
+                        }
+                    }
+                    return null; // Invalid fraction format
+                } else {
+                    const num = parseFloat(strValue);
+                    if (isNaN(num)) return null;
+
+                    if (Number.isInteger(num)) {
+                        return { num: num, den: 1 };
+                    } else {
+                        // Convert decimal to fraction
+                        const len = strValue.split('.')[1].length;
+                        const den = Math.pow(10, len);
+                        const numInt = num * den;
+                        return Fraction.simplify({ num: Math.round(numInt), den: den });
+                    }
+                }
+            },
+            
+            // Operaciones Aritméticas
+            add: (f1, f2) => Fraction.simplify({ num: f1.num * f2.den + f2.num * f1.den, den: f1.den * f2.den }),
+            subtract: (f1, f2) => Fraction.simplify({ num: f1.num * f2.den - f2.num * f1.den, den: f1.den * f2.den }),
+            multiply: (f1, f2) => Fraction.simplify({ num: f1.num * f2.num, den: f1.den * f2.den }),
+            divide: (f1, f2) => {
+                if (f2.num === 0) throw new Error("Division by zero fraction.");
+                return Fraction.simplify({ num: f1.num * f2.den, den: f1.den * f2.num });
+            },
+            negate: (f) => ({ num: -f.num, den: f.den }),
+            
+            // Utilidades de formato y comparación
+            isZero: (f) => f.num === 0,
+            isOne: (f) => f.num === 1 && f.den === 1,
+            isNegativeOne: (f) => f.num === -1 && f.den === 1,
+            
+            toDecimal: (f) => f.num / f.den,
+
+            // Formato para display (normal y LaTeX)
+            format: (f, latex = false, forceSign = false) => {
+                if (f.den === 1) {
+                    const sign = f.num >= 0 && forceSign ? '+' : '';
+                    return sign + f.num.toString();
+                }
+                if (f.num === 0) {
+                     return forceSign ? '+ 0' : '0';
+                }
+                if (latex) {
+                    let sign = f.num < 0 ? '-' : (forceSign ? '+' : '');
+                    if (f.num < 0) {
+                       return `- \\frac{${Math.abs(f.num)}}{${f.den}}`;
+                    }
+                    return `${sign} \\frac{${f.num}}{${f.den}}`;
+                }
+                return `${f.num}/${f.den}`;
+            },
+
+            formatForEquation: (f, variable, isFirst = false) => {
+                if (Fraction.isZero(f)) return "";
+
+                let sign = f.num < 0 ? "-" : "+";
+                let absF = { num: Math.abs(f.num), den: f.den };
+
+                if (isFirst) {
+                    sign = f.num < 0 ? "-" : "";
+                }
+                
+                let coeffStr = "";
+                if (Fraction.isOne(absF) || Fraction.isNegativeOne(absF)) {
+                    coeffStr = variable;
+                } else {
+                    coeffStr = `${Fraction.format(absF, true)}${variable}`;
+                }
+                
+                return isFirst ? `${sign}${coeffStr}` : ` ${sign} ${coeffStr}`;
+            }
+        };
+
         document.addEventListener('DOMContentLoaded', function () {
             // Register the zoom plugin with Chart.js
-            Chart.register(ChartZoom);
+            if(window.ChartZoom) Chart.register(ChartZoom);
 
             // Get DOM elements
             const solveBtn = document.getElementById('solveBtn');
@@ -223,19 +353,8 @@
                 notificationModal.classList.add('hidden');
             });
 
-            zoomInBtn.addEventListener('click', () => {
-                if (chartInstance) {
-                    chartInstance.zoom(1.1); // Zoom in by 10%
-                    handleZoom(chartInstance);
-                }
-            });
-
-            zoomOutBtn.addEventListener('click', () => {
-                if (chartInstance) {
-                    chartInstance.zoom(0.9); // Zoom out by 10%
-                    handleZoom(chartInstance);
-                }
-            });
+            zoomInBtn.addEventListener('click', () => chartInstance?.zoom(1.1));
+            zoomOutBtn.addEventListener('click', () => chartInstance?.zoom(0.9));
             
             tabs.forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -258,15 +377,11 @@
             contentPanels.addEventListener('change', function(e) {
                 if (e.target.classList.contains('show-steps-checkbox')) {
                     const targetId = e.target.dataset.target;
-                    const stepsContainer = document.getElementById(targetId);
-                    if (stepsContainer) {
-                        stepsContainer.classList.toggle('hidden');
-                    }
+                    document.getElementById(targetId)?.classList.toggle('hidden');
                 }
             });
             
             // --- UTILITY FUNCTIONS ---
-
             function showNotification(message) {
                 notificationMessage.textContent = message;
                 notificationModal.classList.remove('hidden');
@@ -281,26 +396,6 @@
                 }
             }
             
-            function parseInput(value) {
-                if (value === null || value.trim() === '') return null;
-                value = value.trim().replace(',', '.');
-                
-                if (value.includes('/')) {
-                    const parts = value.split('/');
-                    if (parts.length === 2 && parts[0].trim() !== '' && parts[1].trim() !== '') {
-                        const numerator = parseFloat(parts[0]);
-                        const denominator = parseFloat(parts[1]);
-                        if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
-                            return numerator / denominator;
-                        }
-                    }
-                    return null; 
-                } else {
-                    const num = parseFloat(value);
-                    return isNaN(num) ? null : num;
-                }
-            }
-
             function getCoefficients() {
                 const values = {};
                 const inputIds = ['a', 'b', 'c', 'd', 'e', 'f'];
@@ -310,7 +405,7 @@
 
                 for (const id of inputIds) {
                     const inputEl = document.getElementById(id);
-                    const parsedValue = parseInput(inputEl.value);
+                    const parsedValue = Fraction.create(inputEl.value);
                     if (parsedValue === null) {
                         inputEl.classList.add('error');
                         hasError = true;
@@ -349,29 +444,12 @@
                  lastSolutionData = {};
 
                  document.querySelectorAll('.tab-content').forEach(panel => {
-                    if(panel.id !== 'grafico') panel.innerHTML = '';
+                     if(panel.id !== 'grafico') panel.innerHTML = '';
                  });
             }
             
             // --- FORMATTING FUNCTIONS ---
 
-            function formatNumberSmart(num) {
-                if (num === null || num === undefined) return '0';
-                const numFloat = parseFloat(num);
-                if (Math.abs(numFloat - Math.round(numFloat)) < 1e-9) {
-                    return Math.round(numFloat).toString();
-                } else {
-                    return parseFloat(numFloat.toFixed(3)).toString().replace(/(\.0+|0+)$/, '');
-                }
-            }
-
-            function formatLatexSign(num) {
-                if (Math.abs(num) < 1e-9) return '';
-                const absNum = Math.abs(num);
-                const formattedNum = formatNumberSmart(absNum);
-                return num < 0 ? `- ${formattedNum}` : `+ ${formattedNum}`;
-            }
-            
             function createStep(title, content) {
                 return `<div class="solution-step">
                             <h4 class="font-semibold text-base mb-2 text-indigo-700">${title}</h4>
@@ -394,14 +472,25 @@
 
                 lastSolutionData = { coeffs };
                 const { a, b, c, d, e, f } = coeffs;
-                const determinant = a * e - b * d;
+                // determinant = a*e - b*d
+                const determinant = Fraction.subtract(Fraction.multiply(a, e), Fraction.multiply(b, d));
                 
-                if (Math.abs(determinant) > 1e-9) {
-                    lastSolutionData.solution = { x: (c * e - b * f) / determinant, y: (a * f - c * d) / determinant };
+                if (!Fraction.isZero(determinant)) {
+                    // x = (c*e - b*f) / determinant
+                    const x_num = Fraction.subtract(Fraction.multiply(c, e), Fraction.multiply(b, f));
+                    // y = (a*f - c*d) / determinant
+                    const y_num = Fraction.subtract(Fraction.multiply(a, f), Fraction.multiply(c, d));
+                    
+                    lastSolutionData.solution = { 
+                        x: Fraction.divide(x_num, determinant),
+                        y: Fraction.divide(y_num, determinant)
+                    };
                     lastSolutionData.caseType = 'unica';
                 } else {
                     lastSolutionData.solution = null;
-                    lastSolutionData.caseType = (Math.abs(a * f - c * d) < 1e-9 && Math.abs(c * e - b * f) < 1e-9) ? "infinitas" : "paralelas";
+                    const check1 = Fraction.subtract(Fraction.multiply(a, f), Fraction.multiply(c, d));
+                    const check2 = Fraction.subtract(Fraction.multiply(c, e), Fraction.multiply(b, f));
+                    lastSolutionData.caseType = (Fraction.isZero(check1) && Fraction.isZero(check2)) ? "infinitas" : "paralelas";
                 }
                 
                 solveBySustitucion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
@@ -421,7 +510,7 @@
                 if (caseType === 'unica') {
                     finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
                         <h4 class="text-base font-bold text-green-800">Solución Final</h4>
-                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${formatNumberSmart(solution.x)} \\quad , \\quad y = ${formatNumberSmart(solution.y)} $$</p>
+                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
                     </div>`;
                 } else {
                     finalSolutionHtml = `<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
@@ -452,18 +541,42 @@
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                     if (Math.abs(b) > 1e-9) {
-                        stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} \\implies y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$`);
-                        stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}x ${formatLatexSign(e)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}}\\right) = ${formatNumberSmart(f)} $$`);
-                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
-                     } else if (Math.abs(a) > 1e-9) {
-                         stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${formatNumberSmart(a)}x = ${formatNumberSmart(c)} ${formatLatexSign(-b)}y \\implies x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$`);
-                         stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${formatNumberSmart(d)}\\left(\\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}}\\right) ${formatLatexSign(e)}y = ${formatNumberSmart(f)} $$`);
-                         stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
-                         stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
+            
+                    // Try to solve by isolating y from eq1
+                    if (!Fraction.isZero(b)) {
+                        const y_const = Fraction.divide(c, b);
+                        const y_x_coeff = Fraction.divide(Fraction.negate(a), b);
+                        
+                        let y_expr_str;
+                        if (Fraction.isZero(y_const)) {
+                            y_expr_str = Fraction.formatForEquation(y_x_coeff, 'x', true);
+                        } else {
+                            y_expr_str = `${Fraction.format(y_const, true)} ${Fraction.formatForEquation(y_x_coeff, 'x')}`;
+                        }
+            
+                        stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} \\implies y = ${y_expr_str} $$`);
+                        stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, '')} \\left( ${y_expr_str} \\right) = ${Fraction.format(f, true)} $$`);
+                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${Fraction.format(x, true)} $$`);
+                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `Sustituyendo $x$ en la expresión despejada: $$ y = ${Fraction.format(y, true)} $$`);
+                    
+                    // If b is 0, try to solve by isolating x from eq1
+                    } else if (!Fraction.isZero(a)) {
+                        const x_const = Fraction.divide(c, a);
+                        const x_y_coeff = Fraction.divide(Fraction.negate(b), a);
+            
+                        let x_expr_str;
+                        if (Fraction.isZero(x_const)) {
+                            x_expr_str = Fraction.formatForEquation(x_y_coeff, 'y', true);
+                        } else {
+                            x_expr_str = `${Fraction.format(x_const, true)} ${Fraction.formatForEquation(x_y_coeff, 'y')}`;
+                        }
+            
+                        stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} \\implies x = ${x_expr_str} $$`);
+                        stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, '')} \\left( ${x_expr_str} \\right) ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} $$`);
+                        stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${Fraction.format(y, true)} $$`);
+                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `Sustituyendo $y$ en la expresión despejada: $$ x = ${Fraction.format(x, true)} $$`);
                     } else {
-                        stepsHtml = createStep('Error', 'No se puede despejar en la primera ecuación.');
+                        stepsHtml = createStep('Error', 'No se puede despejar en la primera ecuación (a y b son cero).');
                     }
                 }
                 buildAlgebraicMethodUI('sustitucion', 'Método de Sustitución', stepsHtml, solution, caseType);
@@ -473,35 +586,45 @@
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                     if (Math.abs(a) > 1e-9 && Math.abs(d) > 1e-9) {
-                        stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} $$ Ec. 2: $$ x = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}y}{${formatNumberSmart(a)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-e)}y}{${formatNumberSmart(d)}} $$`);
-                        stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${formatNumberSmart(y)} $$`);
-                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$ x = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-b)}(${formatNumberSmart(y)})}{${formatNumberSmart(a)}} \\implies x = ${formatNumberSmart(x)} $$`);
-                     } else if (Math.abs(b) > 1e-9 && Math.abs(e) > 1e-9) {
-                        stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} $$ Ec. 2: $$ y = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}x}{${formatNumberSmart(b)}} = \\frac{${formatNumberSmart(f)} ${formatLatexSign(-d)}x}{${formatNumberSmart(e)}} $$`);
-                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${formatNumberSmart(x)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$ y = \\frac{${formatNumberSmart(c)} ${formatLatexSign(-a)}(${formatNumberSmart(x)})}{${formatNumberSmart(b)}} \\implies y = ${formatNumberSmart(y)} $$`);
-                    } else {
-                        stepsHtml = createStep('Error', 'No se puede despejar la misma variable en ambas ecuaciones.');
-                    }
+                     if (!Fraction.isZero(a) && !Fraction.isZero(d)) { // Isolate x
+                        const x1_c = Fraction.divide(c, a);
+                        const x1_y = Fraction.divide(Fraction.negate(b), a);
+                        const x2_c = Fraction.divide(f, d);
+                        const x2_y = Fraction.divide(Fraction.negate(e), d);
+
+                        stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = ${Fraction.format(x1_c, true)} ${Fraction.formatForEquation(x1_y, 'y')} $$ Ec. 2: $$ x = ${Fraction.format(x2_c, true)} ${Fraction.formatForEquation(x2_y, 'y')} $$`);
+                        stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ ${Fraction.format(x1_c, true)} ${Fraction.formatForEquation(x1_y, 'y')} = ${Fraction.format(x2_c, true)} ${Fraction.formatForEquation(x2_y, 'y')} $$`);
+                        stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${Fraction.format(y, true)} $$`);
+                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `Sustituyendo $y$ en la primera expresión: $$ x = ${Fraction.format(x, true)} $$`);
+                     } else if (!Fraction.isZero(b) && !Fraction.isZero(e)) { // Isolate y
+                        const y1_c = Fraction.divide(c, b);
+                        const y1_x = Fraction.divide(Fraction.negate(a), b);
+                        const y2_c = Fraction.divide(f, e);
+                        const y2_x = Fraction.divide(Fraction.negate(d), e);
+
+                        stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = ${Fraction.format(y1_c, true)} ${Fraction.formatForEquation(y1_x, 'x')} $$ Ec. 2: $$ y = ${Fraction.format(y2_c, true)} ${Fraction.formatForEquation(y2_x, 'x')} $$`);
+                        stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ ${Fraction.format(y1_c, true)} ${Fraction.formatForEquation(y1_x, 'x')} = ${Fraction.format(y2_c, true)} ${Fraction.formatForEquation(y2_x, 'x')} $$`);
+                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${Fraction.format(x, true)} $$`);
+                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `Sustituyendo $x$ en la primera expresión: $$ y = ${Fraction.format(y, true)} $$`);
+                     } else {
+                         stepsHtml = createStep('Error', 'No se puede despejar la misma variable en ambas ecuaciones.');
+                     }
                 }
                 buildAlgebraicMethodUI('igualacion', 'Método de Igualación', stepsHtml, solution, caseType);
             }
 
             function solveByReduccion({a, b, c, d, e, f}, solution, caseType) {
                 // Special case: One of the variables is already eliminated.
-                if (caseType === 'unica' && (a === 0 || b === 0 || d === 0 || e === 0)) {
+                if (caseType === 'unica' && (Fraction.isZero(a) || Fraction.isZero(b) || Fraction.isZero(d) || Fraction.isZero(e))) {
                     const container = document.getElementById('reduccion');
                     const finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
                         <h4 class="text-base font-bold text-green-800">Solución Final</h4>
-                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${formatNumberSmart(solution.x)} \\quad , \\quad y = ${formatNumberSmart(solution.y)} $$</p>
+                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
                     </div>`;
                     
                     const explanationHtml = createStep(
                         'Nota sobre el Método de Reducción',
-                        `Cuando el coeficiente de una variable es 0, esa variable ya está prácticamente despejada en una de las ecuaciones. <br><br> En estos casos, el método de reducción no es el más práctico. La solución se encuentra de forma mucho más directa por <b>sustitución</b>.`
+                        'Cuando el coeficiente de una variable es 0, esa variable ya está prácticamente despejada en una de las ecuaciones. <br><br> En estos casos, el método de reducción no es el más práctico. La solución se encuentra de forma mucho más directa por <b>sustitución</b> o <b>igualación</b>.'
                     );
 
                     container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">Método de Reducción</h3>${finalSolutionHtml}${explanationHtml}`;
@@ -513,10 +636,18 @@
                 let stepsHtml = '';
                 if (caseType === 'unica') {
                     const {x, y} = solution;
-                    const step1Content = `$$ \\begin{cases} (${formatNumberSmart(a)})x ${formatLatexSign(b)}y = ${formatNumberSmart(c)} & \\xrightarrow{\\times ${formatNumberSmart(d)}} \\\\ (${formatNumberSmart(d)})x ${formatLatexSign(e)}y = ${formatNumberSmart(f)} & \\xrightarrow{\\times ${formatNumberSmart(-a)}} \\end{cases} \\quad \\implies \\quad \\begin{cases} ${formatNumberSmart(a*d)}x ${formatLatexSign(b*d)}y = ${formatNumberSmart(c*d)} \\\\ ${formatNumberSmart(d*(-a))}x ${formatLatexSign(e*(-a))}y = ${formatNumberSmart(f*(-a))} \\end{cases} $$`;
+                    const ad = Fraction.multiply(a,d);
+                    const bd = Fraction.multiply(b,d);
+                    const cd = Fraction.multiply(c,d);
+                    const neg_a = Fraction.negate(a);
+                    const da = Fraction.multiply(d, neg_a);
+                    const ea = Fraction.multiply(e, neg_a);
+                    const fa = Fraction.multiply(f, neg_a);
+
+                    const step1Content = `$$ \\begin{cases} ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} & \\xrightarrow{\\times ${Fraction.format(d, true)}} \\\\ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} & \\xrightarrow{\\times ${Fraction.format(neg_a, true)}} \\end{cases} \\implies \\begin{cases} ${Fraction.formatForEquation(ad, 'x', true)} ${Fraction.formatForEquation(bd, 'y')} = ${Fraction.format(cd, true)} \\\\ ${Fraction.formatForEquation(da, 'x', true)} ${Fraction.formatForEquation(ea, 'y')} = ${Fraction.format(fa, true)} \\end{cases} $$`;
                     stepsHtml += createStep('1. Multiplicar para eliminar $x$', step1Content);
-                    stepsHtml += createStep('2. Sumar las nuevas ecuaciones para encontrar $y$', `Al sumar las dos ecuaciones, el término con $x$ se cancela: $$ (${formatNumberSmart(b*d + e*-a)})y = ${formatNumberSmart(c*d + f*-a)} \\implies y = ${formatNumberSmart(y)} $$`);
-                    stepsHtml += createStep('3. Encontrar $x$ sustituyendo $y$ en la Ec. 1', `$$ ${formatNumberSmart(a)}x ${formatLatexSign(b)}(${formatNumberSmart(y)}) = ${formatNumberSmart(c)} \\implies x = ${formatNumberSmart(x)} $$`);
+                    stepsHtml += createStep('2. Sumar las nuevas ecuaciones para encontrar $y$', `Al sumar, el término con $x$ se cancela: $$ (${Fraction.formatForEquation(Fraction.add(bd,ea), 'y', true)}) = ${Fraction.format(Fraction.add(cd, fa), true)} \\implies y = ${Fraction.format(y, true)} $$`);
+                    stepsHtml += createStep('3. Encontrar $x$ sustituyendo $y$ en la Ec. 1', `Sustituyendo $y$ y despejando: $$ x = ${Fraction.format(x, true)} $$`);
                 }
                 
                 // Use the generic builder for standard cases (unica, infinitas, paralelas)
@@ -524,7 +655,7 @@
             }
 
             // --- GRAPHICAL METHOD IMPLEMENTATION ---
-
+            
             let handleZoom; // Declare here to be accessible in chart options
 
             function solveByGrafico({a, b, c, d, e, f}, solution, caseType) {
@@ -532,84 +663,106 @@
                 graphPlaceholder.classList.add('hidden');
                 zoomControls.classList.remove('hidden');
                 
+                let eq1Text, eq2Text;
+                // Equation 1
+                if (!Fraction.isZero(b)) {
+                    const m1 = Fraction.divide(Fraction.negate(a), b);
+                    const n1 = Fraction.divide(c, b);
+                    eq1Text = `Recta 1 (azul): $y = ${Fraction.formatForEquation(m1, 'x', true)} ${Fraction.formatForEquation(n1, '', Fraction.isZero(m1))}$`;
+                } else if (!Fraction.isZero(a)) {
+                    eq1Text = `Recta 1 (azul): $x = ${Fraction.format(Fraction.divide(c,a), true)}$ (Recta Vertical)`;
+                } else {
+                    eq1Text = 'Recta 1 (azul): Ecuación inválida (0=c)';
+                }
+                // Equation 2
+                if (!Fraction.isZero(e)) {
+                    const m2 = Fraction.divide(Fraction.negate(d), e);
+                    const n2 = Fraction.divide(f, e);
+                    eq2Text = `Recta 2 (roja): $y = ${Fraction.formatForEquation(m2, 'x', true)} ${Fraction.formatForEquation(n2, '', Fraction.isZero(m2))}$`;
+                } else if (!Fraction.isZero(d)) {
+                    eq2Text = `Recta 2 (roja): $x = ${Fraction.format(Fraction.divide(f,d), true)}$ (Recta Vertical)`;
+                } else {
+                    eq2Text = 'Recta 2 (roja): Ecuación inválida (0=f)';
+                }
+
                 const graphInfoDiv = document.getElementById('graph-info');
-                
-                let eq1Text = (Math.abs(b) > 1e-9) 
-                    ? `Recta 1 (azul): $y = ${formatNumberSmart(-a/b)}x ${formatLatexSign(c/b)}$`
-                    : `Recta 1 (azul): $x = ${formatNumberSmart(c/a)}$ (Recta Vertical)`;
-                let eq2Text = (Math.abs(e) > 1e-9)
-                    ? `Recta 2 (roja): $y = ${formatNumberSmart(-d/e)}x ${formatLatexSign(f/e)}$`
-                    : `Recta 2 (roja): $x = ${formatNumberSmart(f/d)}$ (Recta Vertical)`;
-                
                 graphInfoDiv.innerHTML = createStep('Ecuaciones en forma explícita ($y=mx+n$)', `${eq1Text}<br>${eq2Text}`);
                 renderMathInElement(graphInfoDiv);
 
-                const canvas = document.getElementById('chart');
-                if (!canvas) return;
                 if (chartInstance) chartInstance.destroy();
 
                 const generateLineData = (m, n, range) => [{x: range.min, y: m * range.min + n}, {x: range.max, y: m * range.max + n}];
                 const generateVerticalLineData = (k, range) => [{x: k, y: range.min}, {x: k, y: range.max}];
-
+                
                 let minX, maxX, minY, maxY;
                 const PADDING = 10;
                 if (caseType === 'unica' && solution) {
-                    const solX = parseFloat(solution.x);
-                    const solY = parseFloat(solution.y);
-                    minX = solX - PADDING;
-                    maxX = solX + PADDING;
-                    minY = solY - PADDING;
-                    maxY = solY + PADDING;
+                    const solX = Fraction.toDecimal(solution.x);
+                    const solY = Fraction.toDecimal(solution.y);
+                    minX = solX - PADDING; maxX = solX + PADDING;
+                    minY = solY - PADDING; maxY = solY + PADDING;
                 } else {
                     minX = -PADDING; maxX = PADDING;
                     minY = -PADDING; maxY = PADDING;
                 }
-
+                
                 const initialXRange = { min: minX, max: maxX };
                 const initialYRange = { min: minY, max: maxY };
 
-                let line1InitialData = (Math.abs(b) > 1e-9) ? generateLineData(-a / b, c / b, initialXRange) : (Math.abs(a) > 1e-9 ? generateVerticalLineData(c / a, initialYRange) : []);
-                let line2InitialData = (Math.abs(e) > 1e-9) ? generateLineData(-d / e, f / e, initialXRange) : (Math.abs(d) > 1e-9 ? generateVerticalLineData(f / d, initialYRange) : []);
-                
+                let line1Data = [];
+                if (!Fraction.isZero(b)) {
+                    line1Data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)), Fraction.toDecimal(Fraction.divide(c,b)), initialXRange);
+                } else if (!Fraction.isZero(a)) {
+                    line1Data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(c,a)), initialYRange);
+                }
+
+                let line2Data = [];
+                if (!Fraction.isZero(e)) {
+                    line2Data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)), Fraction.toDecimal(Fraction.divide(f,e)), initialXRange);
+                } else if (!Fraction.isZero(d)) {
+                    line2Data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(f,d)), initialYRange);
+                }
+
                 const datasets = [
-                    { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line1InitialData },
-                    { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line2InitialData }
+                    { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line1Data },
+                    { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line2Data }
                 ];
                 
                 let chartTitle = 'Gráfico del Sistema';
                 if (caseType === 'unica' && showSolutionCheckbox.checked) {
-                    datasets.push({ label: `Solución`, data: [solution], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' });
-                    chartTitle = `Punto de corte: (${formatNumberSmart(solution.x)}, ${formatNumberSmart(solution.y)})`;
+                    const solX_dec = Fraction.toDecimal(solution.x).toFixed(2);
+                    const solY_dec = Fraction.toDecimal(solution.y).toFixed(2);
+                    const solX_frac = Fraction.format(solution.x);
+                    const solY_frac = Fraction.format(solution.y);
+
+                    datasets.push({ label: `Solución`, data: [{x: Fraction.toDecimal(solution.x), y: Fraction.toDecimal(solution.y)}], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' });
+                    chartTitle = `Punto de corte: (x=${solX_frac} ≈ ${solX_dec}, y=${solY_frac} ≈ ${solY_dec})`;
                 } else if (caseType === 'infinitas') {
                     chartTitle = "Infinitas Soluciones: Las rectas son coincidentes.";
-                    datasets[1].borderColor = '#60a5fa';
-                    datasets[1].borderDash = [5, 5];
+                    datasets[1].borderColor = '#60a5fa'; datasets[1].borderDash = [5, 5];
                 } else if (caseType === 'paralelas') {
                     chartTitle = "Sin Solución: Las rectas son paralelas.";
                 }
 
                 handleZoom = (chart) => {
                     if (!chart || !chart.scales || !chart.scales.x) return;
-                    if (caseType === 'unica' && solution) {
-                        const solX = parseFloat(solution.x);
-                        const solY = parseFloat(solution.y);
-                        const width = chart.scales.x.max - chart.scales.x.min;
-                        const height = chart.scales.y.max - chart.scales.y.min;
-                        chart.scales.x.min = solX - width / 2;
-                        chart.scales.x.max = solX + width / 2;
-                        chart.scales.y.min = solY - height / 2;
-                        chart.scales.y.max = solY + height / 2;
-                    }
-
+                    
                     const xRange = { min: chart.scales.x.min, max: chart.scales.x.max };
                     const yRange = { min: chart.scales.y.min, max: chart.scales.y.max };
                     
-                    chart.data.datasets[0].data = (Math.abs(b) > 1e-9) ? generateLineData(-a/b, c/b, xRange) : (Math.abs(a) > 1e-9 ? generateVerticalLineData(c/a, yRange) : []);
-                    chart.data.datasets[1].data = (Math.abs(e) > 1e-9) ? generateLineData(-d/e, f/e, xRange) : (Math.abs(d) > 1e-9 ? generateVerticalLineData(f/d, yRange) : []);
+                    if (!Fraction.isZero(b)) {
+                        chart.data.datasets[0].data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)), Fraction.toDecimal(Fraction.divide(c, b)), xRange);
+                    } else if (!Fraction.isZero(a)) {
+                        chart.data.datasets[0].data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(c, a)), yRange);
+                    }
+
+                    if (!Fraction.isZero(e)) {
+                        chart.data.datasets[1].data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)), Fraction.toDecimal(Fraction.divide(f, e)), xRange);
+                    } else if (!Fraction.isZero(d)) {
+                        chart.data.datasets[1].data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(f, d)), yRange);
+                    }
                     chart.update('none');
                 };
-                
-                const isPanEnabled = caseType !== 'unica';
 
                 chartInstance = new Chart(document.getElementById('chart').getContext('2d'), {
                     data: { datasets: datasets },
@@ -624,12 +777,15 @@
                             title: { display: true, text: chartTitle, font: { size: 16 } },
                             legend: { position: 'top', labels: { font: { size: 12 } } },
                             zoom: {
-                                pan: { enabled: isPanEnabled, mode: 'xy', onPanComplete: ({chart}) => handleZoom(chart) },
-                                zoom: {
-                                    drag: { enabled: false },
+                                pan: { 
+                                    enabled: true, 
+                                    mode: 'xy',
+                                    onPanComplete: ({chart}) => handleZoom(chart)
+                                },
+                                zoom: { 
                                     wheel: { enabled: true }, 
                                     pinch: { enabled: true }, 
-                                    mode: 'xy', 
+                                    mode: 'xy',
                                     onZoomComplete: ({chart}) => handleZoom(chart)
                                 }
                             }
@@ -637,6 +793,9 @@
                     }
                 });
             }
+
+            // --- Initial call to render math for any pre-loaded content ---
+            renderMathInElement(document.body);
         });
     </script>
 </body>
