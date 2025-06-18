@@ -71,7 +71,6 @@
         #chart {
             touch-action: none; 
         }
-        /* Notification Modal Styles */
         #notification-modal {
             transition: opacity 0.3s ease;
         }
@@ -81,6 +80,63 @@
             font-size: 24px;
             line-height: 1;
         }
+        /* New styles for step-by-step and variable choice */
+        .toggle-steps-label {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background-color: #eef2ff;
+            color: #4338ca;
+            border-radius: 0.375rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .toggle-steps-label:hover {
+            background-color: #e0e7ff;
+        }
+        .toggle-steps-checkbox {
+            display: none;
+        }
+        .variable-selector {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background-color: #f3f4f6;
+            border-radius: 0.5rem;
+        }
+        .variable-selector .description {
+            font-weight: 500;
+            color: #374151;
+        }
+        .variable-selector-label {
+            display: block;
+        }
+        .variable-selector-label input {
+            display: none;
+        }
+        .variable-selector-label span {
+            display: block;
+            padding: 0.4rem 1.2rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .variable-selector-label input:checked + span {
+            background-color: #4f46e5;
+            color: white;
+            border-color: #4f46e5;
+        }
+        .variable-selector-label input:disabled + span {
+            opacity: 0.5;
+            background-color: #e5e7eb;
+            cursor: not-allowed;
+        }
+
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -375,9 +431,36 @@
             });
 
             contentPanels.addEventListener('change', function(e) {
-                if (e.target.classList.contains('show-steps-checkbox')) {
+                if (e.target.classList.contains('toggle-steps-checkbox')) {
                     const targetId = e.target.dataset.target;
                     document.getElementById(targetId)?.classList.toggle('hidden');
+                }
+                
+                // Handle variable choice changes
+                if (e.target.name && e.target.name.endsWith('-var')) {
+                    const method = e.target.name.split('-')[0];
+                    const variable = e.target.value;
+                    const { coeffs, solution, caseType } = lastSolutionData;
+                    if (!coeffs) return;
+
+                    let newStepsHtml = '';
+                    switch (method) {
+                        case 'sustitucion':
+                            newStepsHtml = getSustitucionStepsHtml({ ...coeffs, solution, caseType, variable });
+                            break;
+                        case 'igualacion':
+                            newStepsHtml = getIgualacionStepsHtml({ ...coeffs, solution, caseType, variable });
+                            break;
+                        case 'reduccion':
+                            newStepsHtml = getReduccionStepsHtml({ ...coeffs, solution, caseType, variable });
+                            break;
+                    }
+
+                    const stepsContentDiv = document.getElementById(`steps-content-${method}`);
+                    if (stepsContentDiv) {
+                        stepsContentDiv.innerHTML = newStepsHtml;
+                        renderMathInElement(stepsContentDiv);
+                    }
                 }
             });
             
@@ -502,10 +585,13 @@
                     solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
                 }
                 
-                renderMathInElement(document.getElementById(activeTab));
+                const activePanel = document.getElementById(activeTab);
+                if (activePanel) {
+                    renderMathInElement(activePanel);
+                }
             }
 
-            function buildAlgebraicMethodUI(method, title, stepsHtml, solution, caseType) {
+            function buildAlgebraicMethodUI(method, title, stepsHtml, solution, caseType, options = {}) {
                 let finalSolutionHtml = '';
                 if (caseType === 'unica') {
                     finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
@@ -519,104 +605,164 @@
                     </div>`;
                 }
 
+                let variableSelectorHtml = '';
+                if (caseType === 'unica' && options.variable && options.available) {
+                    const varX_checked = options.variable === 'x' ? 'checked' : '';
+                    const varY_checked = options.variable === 'y' ? 'checked' : '';
+                    const varX_disabled = !options.available.includes('x') ? 'disabled' : '';
+                    const varY_disabled = !options.available.includes('y') ? 'disabled' : '';
+
+                    let description = '';
+                    if (method === 'sustitucion') description = 'Despejar en Ec. 1:';
+                    if (method === 'igualacion') description = 'Igualar por variable:';
+                    if (method === 'reduccion') description = 'Eliminar variable:';
+
+                    variableSelectorHtml = `
+                        <div class="variable-selector">
+                            <span class="description">${description}</span>
+                            <label class="variable-selector-label">
+                                <input type="radio" name="${method}-var" value="x" ${varX_checked} ${varX_disabled}>
+                                <span>X</span>
+                            </label>
+                            <label class="variable-selector-label">
+                                <input type="radio" name="${method}-var" value="y" ${varY_checked} ${varY_disabled}>
+                                <span>Y</span>
+                            </label>
+                        </div>
+                    `;
+                }
+
                 let stepsToggleHtml = '';
-                if (caseType === 'unica' && stepsHtml) {
-                    stepsToggleHtml = `<div class="text-center my-4">
-                        <label class="cursor-pointer text-base">
-                            <input type="checkbox" class="show-steps-checkbox mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500" data-target="steps-${method}">
-                            Mostrar paso a paso
+                if (stepsHtml) {
+                     stepsToggleHtml = `<div class="text-center my-4">
+                        <label class="toggle-steps-label">
+                           <input type="checkbox" class="toggle-steps-checkbox" data-target="steps-container-${method}">
+                           Mostrar paso a paso
                         </label>
                     </div>
-                    <div id="steps-${method}" class="hidden">
-                        ${stepsHtml}
+                    <div id="steps-container-${method}" class="hidden">
+                        ${variableSelectorHtml}
+                        <div id="steps-content-${method}">${stepsHtml}</div>
                     </div>`;
                 }
+
 
                 const container = document.getElementById(method);
                 container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">${title}</h3>${finalSolutionHtml}${stepsToggleHtml}`;
             }
             
             // --- ALGEBRAIC METHOD IMPLEMENTATIONS ---
-            function solveBySustitucion({a, b, c, d, e, f}, solution, caseType) {
+
+            function getSustitucionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
+                if (caseType !== 'unica' || !variable) return '';
+                const { x, y } = solution;
                 let stepsHtml = '';
-                if (caseType === 'unica') {
-                    const {x, y} = solution;
-            
-                    // Try to solve by isolating y from eq1
-                    if (!Fraction.isZero(b)) {
-                        const y_const = Fraction.divide(c, b);
-                        const y_x_coeff = Fraction.divide(Fraction.negate(a), b);
-                        
-                        let y_expr_str;
-                        if (Fraction.isZero(y_const)) {
-                            y_expr_str = Fraction.formatForEquation(y_x_coeff, 'x', true);
-                        } else {
-                            y_expr_str = `${Fraction.format(y_const, true)} ${Fraction.formatForEquation(y_x_coeff, 'x')}`;
-                        }
-            
-                        stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$ ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} \\implies y = ${y_expr_str} $$`);
-                        stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, '')} \\left( ${y_expr_str} \\right) = ${Fraction.format(f, true)} $$`);
-                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${Fraction.format(x, true)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `Sustituyendo $x$ en la expresión despejada: $$ y = ${Fraction.format(y, true)} $$`);
+                if (variable === 'y') {
+                    const y_const = Fraction.divide(c, b);
+                    const y_x_coeff = Fraction.divide(Fraction.negate(a), b);
+                    const y_expr_str = `${Fraction.format(y_const, true)} ${Fraction.formatForEquation(y_x_coeff, 'x')}`;
+                    stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$... \\implies y = ${y_expr_str} $$`);
+                    stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, '')} \\left( ${y_expr_str} \\right) = ${Fraction.format(f, true)} $$`);
+                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                } else { // variable === 'x'
+                    const x_const = Fraction.divide(c, a);
+                    const x_y_coeff = Fraction.divide(Fraction.negate(b), a);
+                    const x_expr_str = `${Fraction.format(x_const, true)} ${Fraction.formatForEquation(x_y_coeff, 'y')}`;
+                    stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$... \\implies x = ${x_expr_str} $$`);
+                    stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, '')}\\left( ${x_expr_str} \\right) ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} $$`);
+                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                }
+                return stepsHtml;
+            }
+
+            function solveBySustitucion(coeffs, solution, caseType, initialVariable = 'y') {
+                const availableChoices = [];
+                if (!Fraction.isZero(coeffs.b)) availableChoices.push('y');
+                if (!Fraction.isZero(coeffs.a)) availableChoices.push('x');
+                
+                let variable = initialVariable;
+                if (!availableChoices.includes(variable)) {
+                    variable = availableChoices.length > 0 ? availableChoices[0] : null;
+                }
+                
+                const stepsHtml = getSustitucionStepsHtml({ ...coeffs, solution, caseType, variable });
+                buildAlgebraicMethodUI('sustitucion', 'Método de Sustitución', stepsHtml, solution, caseType, { variable, available: availableChoices });
+            }
+
+            function getIgualacionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
+                 if (caseType !== 'unica' || !variable) return '';
+                 const {x, y} = solution;
+                 let stepsHtml = '';
+                 if (variable === 'x') {
+                    const x1_expr = `${Fraction.format(Fraction.divide(c,a),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(b),a), 'y')}`;
+                    const x2_expr = `${Fraction.format(Fraction.divide(f,d),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(e),d), 'y')}`;
+                    stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $ x = ${x1_expr} $<br>Ec. 2: $ x = ${x2_expr} $`);
+                    stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ ${x1_expr} = ${x2_expr} $$`);
+                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                 } else { // variable === 'y'
+                    const y1_expr = `${Fraction.format(Fraction.divide(c,b),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(a),b), 'x')}`;
+                    const y2_expr = `${Fraction.format(Fraction.divide(f,e),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(d),e), 'x')}`;
+                    stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $ y = ${y1_expr} $<br>Ec. 2: $ y = ${y2_expr} $`);
+                    stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ ${y1_expr} = ${y2_expr} $$`);
+                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                 }
+                 return stepsHtml;
+            }
+
+            function solveByIgualacion(coeffs, solution, caseType, initialVariable = 'x') {
+                const availableChoices = [];
+                if (!Fraction.isZero(coeffs.a) && !Fraction.isZero(coeffs.d)) availableChoices.push('x');
+                if (!Fraction.isZero(coeffs.b) && !Fraction.isZero(coeffs.e)) availableChoices.push('y');
+
+                let variable = initialVariable;
+                if (!availableChoices.includes(variable)) {
+                    variable = availableChoices.length > 0 ? availableChoices[0] : null;
+                }
+                
+                const stepsHtml = getIgualacionStepsHtml({ ...coeffs, solution, caseType, variable });
+                buildAlgebraicMethodUI('igualacion', 'Método de Igualación', stepsHtml, solution, caseType, { variable, available: availableChoices });
+            }
+
+            function getReduccionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
+                if (caseType !== 'unica') return '';
+                const {x, y} = solution;
+                let stepsHtml = '';
+                if (variable === 'x') {
+                    const m1 = d;
+                    const m2 = Fraction.negate(a);
+                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) };
+                    const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
+                    const final_y_coeff = Fraction.add(eq1_mult.b, eq2_mult.e);
+                    const final_y_const = Fraction.add(eq1_mult.c, eq2_mult.f);
                     
-                    // If b is 0, try to solve by isolating x from eq1
-                    } else if (!Fraction.isZero(a)) {
-                        const x_const = Fraction.divide(c, a);
-                        const x_y_coeff = Fraction.divide(Fraction.negate(b), a);
-            
-                        let x_expr_str;
-                        if (Fraction.isZero(x_const)) {
-                            x_expr_str = Fraction.formatForEquation(x_y_coeff, 'y', true);
-                        } else {
-                            x_expr_str = `${Fraction.format(x_const, true)} ${Fraction.formatForEquation(x_y_coeff, 'y')}`;
-                        }
-            
-                        stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$ ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} \\implies x = ${x_expr_str} $$`);
-                        stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, '')} \\left( ${x_expr_str} \\right) ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} $$`);
-                        stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${Fraction.format(y, true)} $$`);
-                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `Sustituyendo $y$ en la expresión despejada: $$ x = ${Fraction.format(x, true)} $$`);
-                    } else {
-                        stepsHtml = createStep('Error', 'No se puede despejar en la primera ecuación (a y b son cero).');
-                    }
+                    stepsHtml += createStep('1. Preparar la multiplicación', `$$ \\begin{cases} ${Fraction.formatForEquation(a,'x',true)} ${Fraction.formatForEquation(b,'y')} = ${Fraction.format(c,true)} & \\xrightarrow{\\times (${Fraction.format(m1)})} \\\\ ${Fraction.formatForEquation(d,'x',true)} ${Fraction.formatForEquation(e,'y')} = ${Fraction.format(f,true)} & \\xrightarrow{\\times (${Fraction.format(m2)})} \\end{cases} $$`);
+                    stepsHtml += createStep('2. Sistema resultante', `$$ \\begin{cases} ${Fraction.formatForEquation(eq1_mult.a,'x',true)} ${Fraction.formatForEquation(eq1_mult.b,'y')} = ${Fraction.format(eq1_mult.c)} \\\\ ${Fraction.formatForEquation(eq2_mult.d,'x',true)} ${Fraction.formatForEquation(eq2_mult.e,'y')} = ${Fraction.format(eq2_mult.f)} \\end{cases} $$`);
+                    stepsHtml += createStep('3. Sumar y resolver para $y$', `$$ ${Fraction.formatForEquation(final_y_coeff, 'y', true)} = ${Fraction.format(final_y_const,true)} \\implies y = ${Fraction.format(y, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $x$ por sustitución', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                } else { // variable === 'y'
+                    const m1 = e;
+                    const m2 = Fraction.negate(b);
+                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) };
+                    const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
+                    const final_x_coeff = Fraction.add(eq1_mult.a, eq2_mult.d);
+                    const final_x_const = Fraction.add(eq1_mult.c, eq2_mult.f);
+
+                    stepsHtml += createStep('1. Preparar la multiplicación', `$$ \\begin{cases} ${Fraction.formatForEquation(a,'x',true)} ${Fraction.formatForEquation(b,'y')} = ${Fraction.format(c,true)} & \\xrightarrow{\\times (${Fraction.format(m1)})} \\\\ ${Fraction.formatForEquation(d,'x',true)} ${Fraction.formatForEquation(e,'y')} = ${Fraction.format(f,true)} & \\xrightarrow{\\times (${Fraction.format(m2)})} \\end{cases} $$`);
+                    stepsHtml += createStep('2. Sistema resultante', `$$ \\begin{cases} ${Fraction.formatForEquation(eq1_mult.a,'x',true)} ${Fraction.formatForEquation(eq1_mult.b,'y')} = ${Fraction.format(eq1_mult.c)} \\\\ ${Fraction.formatForEquation(eq2_mult.d,'x',true)} ${Fraction.formatForEquation(eq2_mult.e,'y')} = ${Fraction.format(eq2_mult.f)} \\end{cases} $$`);
+                    stepsHtml += createStep('3. Sumar y resolver para $x$', `$$ ${Fraction.formatForEquation(final_x_coeff, 'x', true)} = ${Fraction.format(final_x_const,true)} \\implies x = ${Fraction.format(x, true)} $$`);
+                    stepsHtml += createStep('4. Encontrar $y$ por sustitución', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
                 }
-                buildAlgebraicMethodUI('sustitucion', 'Método de Sustitución', stepsHtml, solution, caseType);
+                return stepsHtml;
             }
 
-            function solveByIgualacion({a, b, c, d, e, f}, solution, caseType) {
-                let stepsHtml = '';
-                if (caseType === 'unica') {
-                    const {x, y} = solution;
-                     if (!Fraction.isZero(a) && !Fraction.isZero(d)) { // Isolate x
-                        const x1_c = Fraction.divide(c, a);
-                        const x1_y = Fraction.divide(Fraction.negate(b), a);
-                        const x2_c = Fraction.divide(f, d);
-                        const x2_y = Fraction.divide(Fraction.negate(e), d);
-
-                        stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $$ x = ${Fraction.format(x1_c, true)} ${Fraction.formatForEquation(x1_y, 'y')} $$ Ec. 2: $$ x = ${Fraction.format(x2_c, true)} ${Fraction.formatForEquation(x2_y, 'y')} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ ${Fraction.format(x1_c, true)} ${Fraction.formatForEquation(x1_y, 'y')} = ${Fraction.format(x2_c, true)} ${Fraction.formatForEquation(x2_y, 'y')} $$`);
-                        stepsHtml += createStep('3. Resolver para $y$', `Despejando y simplificando se obtiene: $$ y = ${Fraction.format(y, true)} $$`);
-                        stepsHtml += createStep('4. Encontrar $x$ usando $y$', `Sustituyendo $y$ en la primera expresión: $$ x = ${Fraction.format(x, true)} $$`);
-                     } else if (!Fraction.isZero(b) && !Fraction.isZero(e)) { // Isolate y
-                        const y1_c = Fraction.divide(c, b);
-                        const y1_x = Fraction.divide(Fraction.negate(a), b);
-                        const y2_c = Fraction.divide(f, e);
-                        const y2_x = Fraction.divide(Fraction.negate(d), e);
-
-                        stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $$ y = ${Fraction.format(y1_c, true)} ${Fraction.formatForEquation(y1_x, 'x')} $$ Ec. 2: $$ y = ${Fraction.format(y2_c, true)} ${Fraction.formatForEquation(y2_x, 'x')} $$`);
-                        stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ ${Fraction.format(y1_c, true)} ${Fraction.formatForEquation(y1_x, 'x')} = ${Fraction.format(y2_c, true)} ${Fraction.formatForEquation(y2_x, 'x')} $$`);
-                        stepsHtml += createStep('3. Resolver para $x$', `Despejando y simplificando se obtiene: $$ x = ${Fraction.format(x, true)} $$`);
-                        stepsHtml += createStep('4. Encontrar $y$ usando $x$', `Sustituyendo $x$ en la primera expresión: $$ y = ${Fraction.format(y, true)} $$`);
-                     } else {
-                         stepsHtml = createStep('Error', 'No se puede despejar la misma variable en ambas ecuaciones.');
-                     }
-                }
-                buildAlgebraicMethodUI('igualacion', 'Método de Igualación', stepsHtml, solution, caseType);
-            }
-
-            function solveByReduccion({a, b, c, d, e, f}, solution, caseType) {
-                // Special case: One of the variables is already eliminated.
+            function solveByReduccion(coeffs, solution, caseType, initialVariable = 'x') {
+                const {a, b, d, e} = coeffs;
                 if (caseType === 'unica' && (Fraction.isZero(a) || Fraction.isZero(b) || Fraction.isZero(d) || Fraction.isZero(e))) {
-                    const container = document.getElementById('reduccion');
+                     const container = document.getElementById('reduccion');
                     const finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
                         <h4 class="text-base font-bold text-green-800">Solución Final</h4>
                         <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
@@ -628,31 +774,15 @@
                     );
 
                     container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">Método de Reducción</h3>${finalSolutionHtml}${explanationHtml}`;
-                    renderMathInElement(container); // Render LaTeX in the new content
-                    return; // Exit the function after handling the special case
+                    renderMathInElement(container);
+                    return;
                 }
 
-                // Default case: Standard reduction method
-                let stepsHtml = '';
-                if (caseType === 'unica') {
-                    const {x, y} = solution;
-                    const ad = Fraction.multiply(a,d);
-                    const bd = Fraction.multiply(b,d);
-                    const cd = Fraction.multiply(c,d);
-                    const neg_a = Fraction.negate(a);
-                    const da = Fraction.multiply(d, neg_a);
-                    const ea = Fraction.multiply(e, neg_a);
-                    const fa = Fraction.multiply(f, neg_a);
-
-                    const step1Content = `$$ \\begin{cases} ${Fraction.formatForEquation(a, 'x', true)} ${Fraction.formatForEquation(b, 'y')} = ${Fraction.format(c, true)} & \\xrightarrow{\\times ${Fraction.format(d, true)}} \\\\ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} & \\xrightarrow{\\times ${Fraction.format(neg_a, true)}} \\end{cases} \\implies \\begin{cases} ${Fraction.formatForEquation(ad, 'x', true)} ${Fraction.formatForEquation(bd, 'y')} = ${Fraction.format(cd, true)} \\\\ ${Fraction.formatForEquation(da, 'x', true)} ${Fraction.formatForEquation(ea, 'y')} = ${Fraction.format(fa, true)} \\end{cases} $$`;
-                    stepsHtml += createStep('1. Multiplicar para eliminar $x$', step1Content);
-                    stepsHtml += createStep('2. Sumar las nuevas ecuaciones para encontrar $y$', `Al sumar, el término con $x$ se cancela: $$ (${Fraction.formatForEquation(Fraction.add(bd,ea), 'y', true)}) = ${Fraction.format(Fraction.add(cd, fa), true)} \\implies y = ${Fraction.format(y, true)} $$`);
-                    stepsHtml += createStep('3. Encontrar $x$ sustituyendo $y$ en la Ec. 1', `Sustituyendo $y$ y despejando: $$ x = ${Fraction.format(x, true)} $$`);
-                }
-                
-                // Use the generic builder for standard cases (unica, infinitas, paralelas)
-                buildAlgebraicMethodUI('reduccion', 'Método de Reducción', stepsHtml, solution, caseType);
+                const availableChoices = ['x', 'y'];
+                const stepsHtml = getReduccionStepsHtml({ ...coeffs, solution, caseType, variable: initialVariable });
+                buildAlgebraicMethodUI('reduccion', 'Método de Reducción', stepsHtml, solution, caseType, { variable: initialVariable, available: availableChoices });
             }
+
 
             // --- GRAPHICAL METHOD IMPLEMENTATION ---
             
