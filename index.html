@@ -166,7 +166,7 @@
                             <label class="quiz-option-label"><input type="radio" name="difficulty" value="easy" checked><span>Fácil</span></label>
                             <label class="quiz-option-label"><input type="radio" name="difficulty" value="hard"><span>Difícil</span></label>
                          </div>
-                         <p class="text-xs text-light text-center mt-2">Fácil: solo soluciones enteras.</p>
+                         <p class="text-xs text-light text-center mt-2">Fácil: Soluciones enteras.<br>Difícil: Incluye fracciones.</p>
                      </div>
                      <div>
                         <h4 class="font-semibold text-center mb-2">Nº de Problemas</h4>
@@ -192,7 +192,10 @@
                     <button id="startQuizBtn" class="btn-primary font-semibold py-2 px-8 text-lg rounded-lg">¡Comenzar!</button>
                  </div>
                  <div class="text-center mt-6">
-                    <button id="manualSetupBtn" class="text-sm text-light hover:text-brand-color underline">O introducir un problema manualmente (para profes)</button>
+                    <button id="manualSetupBtn" class="text-sm text-light hover:text-brand-color underline">O introducir un problema manualmente</button>
+                 </div>
+                 <div class="mt-4 text-center">
+                    <button id="exitExamSetupBtn" class="text-sm text-light hover:text-brand-color">Volver al Inicio</button>
                  </div>
             </div>
 
@@ -229,20 +232,16 @@
                     <button id="startManualExamBtn" class="btn-primary font-semibold py-2 px-6 rounded-lg">Empezar Prueba</button>
                 </div>
                  <div class="mt-4 text-center">
-                    <button id="exitExamSetupBtn" class="text-sm text-light hover:text-brand-color">Volver al Inicio</button>
+                    <button id="backToSetupBtn" class="text-sm text-light hover:text-brand-color">Volver</button>
                  </div>
             </div>
 
             <!-- VISTA 3: Resolviendo la prueba -->
             <div id="exam-solve-view" class="hidden">
-                 <div class="flex justify-between items-center mb-2">
+                 <div class="flex justify-between items-center mb-4">
                      <h3 id="quiz-progress-counter" class="text-xl font-bold text-brand-color"></h3>
                      <div id="timer-display" class="text-xl font-mono text-light"></div>
                  </div>
-                 <div id="progress-container" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 my-2 hidden">
-                    <div id="progress-bar" class="bg-brand-color h-2.5 rounded-full" style="width: 0%"></div>
-                 </div>
-                 <p class="text-center text-light mb-4">Resuelve el siguiente sistema de ecuaciones:</p>
                  <div id="exam-system-display" class="my-4"></div>
                  <p class="text-center text-light mb-4">Introduce tu solución y comprueba si es correcta.</p>
                  <div class="flex justify-center items-center gap-4 text-lg">
@@ -447,7 +446,8 @@
                         'manualSetupBtn': showManualExamSetup,
                         'startManualExamBtn': startManualExam,
                         'examRandomBtn': generateRandomForExam,
-                        'backToMainBtn': resetSimulator
+                        'backToMainBtn': resetSimulator,
+                        'backToSetupBtn': showExamSetup, // Added this listener
                     }[event.target.id];
                     if (handler) handler();
                 });
@@ -557,9 +557,9 @@
             // --- EXAM MODE ---
             function showView(viewToShow) {
                 ['examSetupView', 'examManualSetupView', 'examSolveView', 'quizFinalView'].forEach(view => {
-                    dom[view].classList.add('hidden');
+                    if (dom[view]) dom[view].classList.add('hidden');
                 });
-                dom[viewToShow].classList.remove('hidden');
+                if (dom[viewToShow]) dom[viewToShow].classList.remove('hidden');
             }
 
             function showExamSetup() {
@@ -625,11 +625,14 @@
                 
                 ['exam-x', 'exam-y'].forEach(id => { 
                     const el = document.getElementById(id);
-                    el.value = ''; 
-                    el.classList.remove('error');
-                    el.disabled = false;
+                    if(el) {
+                        el.value = ''; 
+                        el.classList.remove('error');
+                        el.disabled = false;
+                    }
                 });
-                document.getElementById('checkExamBtn').disabled = false;
+                const checkBtn = document.getElementById('checkExamBtn');
+                if(checkBtn) checkBtn.disabled = false;
             }
 
             async function checkQuizSolution() {
@@ -675,6 +678,7 @@
             }
             
             function startTimer() {
+                stopTimer();
                 if(quizState.timeLimit > 0) {
                     quizState.timeLeft = quizState.timeLimit;
                     updateTimerDisplay();
@@ -754,10 +758,15 @@
                         const c = a*x + b*y; const f = d*x + e*y;
                         coeffs = {a: Fraction.create(a), b: Fraction.create(b), c: Fraction.create(c), d: Fraction.create(d), e: Fraction.create(e), f: Fraction.create(f)};
                     } else { // Hard mode
-                        const rand = () => Math.floor(Math.random() * 21) - 10;
-                        coeffs = {a: Fraction.create(rand()), b: Fraction.create(rand()), c: Fraction.create(rand()), d: Fraction.create(rand()), e: Fraction.create(rand()), f: Fraction.create(rand())};
+                        const randInt = () => Math.floor(Math.random() * 15) - 7; // Integers from -7 to 7
+                        const randFrac = () => {
+                            const num = Math.floor(Math.random() * 11) - 5; // -5 to 5
+                            let den = Math.floor(Math.random() * 5) + 2; // 2 to 6
+                            return Fraction.create(`${num}/${den}`);
+                        };
+                        const randCoeff = () => (Math.random() < 0.6) ? Fraction.create(randInt()) : randFrac();
+                        coeffs = { a: randCoeff(), b: randCoeff(), c: randCoeff(), d: randCoeff(), e: randCoeff(), f: randCoeff() };
                     }
-                    // Recalculate determinant to ensure it's not zero for a valid problem
                     determinant = Fraction.subtract(Fraction.multiply(coeffs.a, coeffs.e), Fraction.multiply(coeffs.b, coeffs.d));
                 } while (Fraction.isZero(determinant)); // Ensure system has a unique solution
                 
