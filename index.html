@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Ecuaciones Lineales 2x2 (Fraccionario)</title>
+    <title>Simulador de Ecuaciones Lineales 2x2 (Interactivo)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Plugin para zoom y pan en el gráfico -->
@@ -136,6 +136,50 @@
             background-color: #e5e7eb;
             cursor: not-allowed;
         }
+        /* Styles for interactive graph controls */
+        .interactive-controls .param-slider {
+            flex-grow: 1;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #d3d3d3;
+            outline: none;
+            opacity: 0.7;
+            -webkit-transition: .2s;
+            transition: opacity .2s;
+        }
+        .interactive-controls .param-slider:hover {
+            opacity: 1;
+        }
+        .interactive-controls .param-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+        .interactive-controls .param-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+        }
+        .reset-slider-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            background-color: #e5e7eb;
+            color: #374151;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .reset-slider-btn:hover {
+            background-color: #d1d5db;
+        }
 
     </style>
 </head>
@@ -188,8 +232,8 @@
                 </div>
             </div>
              <div class="text-center text-gray-500 text-xs mt-4">
-                 <p>Puedes usar <strong>enteros</strong> (p. ej. `5`), <strong>racionales</strong> (p. ej. `3/4`) y <strong>decimales</strong> (p. ej. `1.5` o `1,5`).</p>
-                 <p>Los decimales se convertirán automáticamente a su fracción equivalente.</p>
+                  <p>Puedes usar <strong>enteros</strong> (p. ej. `5`), <strong>racionales</strong> (p. ej. `3/4`) y <strong>decimales</strong> (p. ej. `1.5` o `1,5`).</p>
+                  <p>Los decimales se convertirán automáticamente a su fracción equivalente.</p>
              </div>
             <div class="mt-5 flex justify-center space-x-3">
                 <button id="solveBtn" class="bg-indigo-600 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm">Resolver</button>
@@ -213,24 +257,24 @@
             <div id="reduccion" class="tab-content hidden"></div>
             <div id="grafico" class="tab-content hidden">
                  <div id="graph-container" class="hidden">
-                     <div id="graph-info"></div>
-                     <div class="text-center my-3">
-                         <label for="showSolutionCheckbox" class="cursor-pointer text-base">
-                             <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500">
-                             Mostrar punto de corte
-                         </label>
-                     </div>
-                     <div class="relative" style="height: 65vh; max-height: 500px;">
-                         <canvas id="chart"></canvas>
-                          <!-- Zoom Buttons -->
-                         <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
-                             <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
-                             <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
-                         </div>
-                     </div>
+                      <div id="graph-info"></div>
+                      <div class="text-center my-3">
+                           <label for="showSolutionCheckbox" class="cursor-pointer text-base">
+                               <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500">
+                               Mostrar punto de corte
+                           </label>
+                      </div>
+                      <div class="relative" style="height: 65vh; max-height: 500px;">
+                           <canvas id="chart"></canvas>
+                           <!-- Zoom Buttons -->
+                          <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
+                               <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
+                               <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
+                           </div>
+                      </div>
                  </div>
                  <div id="graph-placeholder" class="text-center text-gray-500 pt-16">
-                     <p>Introduce los coeficientes del sistema de ecuaciones y pulsa "Resolver" para generar el gráfico.</p>
+                      <p>Introduce los coeficientes del sistema de ecuaciones y pulsa "Resolver" para generar el gráfico.</p>
                  </div>
             </div>
         </div>
@@ -337,12 +381,12 @@
                     return sign + f.num.toString();
                 }
                 if (f.num === 0) {
-                     return forceSign ? '+ 0' : '0';
+                   return forceSign ? '+ 0' : '0';
                 }
                 if (latex) {
                     let sign = f.num < 0 ? '-' : (forceSign ? '+' : '');
                     if (f.num < 0) {
-                       return `- \\frac{${Math.abs(f.num)}}{${f.den}}`;
+                        return `- \\frac{${Math.abs(f.num)}}{${f.den}}`;
                     }
                     return `${sign} \\frac{${f.num}}{${f.den}}`;
                 }
@@ -382,6 +426,7 @@
             const contentPanels = document.getElementById('contentPanels');
             const showSolutionCheckbox = document.getElementById('showSolutionCheckbox');
             const graphContainer = document.getElementById('graph-container');
+            const graphInfoDiv = document.getElementById('graph-info');
             const graphPlaceholder = document.getElementById('graph-placeholder');
             const notificationModal = document.getElementById('notification-modal');
             const notificationMessage = document.getElementById('notification-message');
@@ -393,6 +438,7 @@
             // State variables
             let chartInstance = null;
             let lastSolutionData = {};
+            let interactiveGraphParams = {};
 
             // --- EVENT LISTENERS ---
             solveBtn.addEventListener('click', solve);
@@ -400,8 +446,8 @@
             resetBtn.addEventListener('click', resetSimulator);
             
             showSolutionCheckbox.addEventListener('change', () => {
-                if(getActiveTab() === 'grafico' && lastSolutionData.coeffs) {
-                    solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
+                if (getActiveTab() === 'grafico' && chartInstance) {
+                    updateInteractiveGraph(); // Update graph to show/hide solution
                 }
             });
 
@@ -463,6 +509,18 @@
                     }
                 }
             });
+
+            graphInfoDiv.addEventListener('input', (e) => {
+                if(e.target.classList.contains('param-slider')) {
+                    updateInteractiveGraph();
+                }
+            });
+            graphInfoDiv.addEventListener('click', (e) => {
+                if (e.target.classList.contains('reset-slider-btn')) {
+                    const lineNum = e.target.dataset.line;
+                    handleResetSliders(lineNum);
+                }
+            });
             
             // --- UTILITY FUNCTIONS ---
             function showNotification(message) {
@@ -507,13 +565,13 @@
 
             function resetSimulator() {
                  ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
-                     const input = document.getElementById(id);
-                     input.value = '';
-                     input.classList.remove('error');
+                      const input = document.getElementById(id);
+                      input.value = '';
+                      input.classList.remove('error');
                  });
                  ['sustitucion', 'igualacion', 'reduccion', 'graph-info'].forEach(id => {
-                     const el = document.getElementById(id);
-                     if (el) el.innerHTML = '';
+                      const el = document.getElementById(id);
+                      if (el) el.innerHTML = '';
                  });
                  
                  graphContainer.classList.add('hidden');
@@ -521,13 +579,14 @@
                  showSolutionCheckbox.checked = false;
 
                  if (chartInstance) {
-                     chartInstance.destroy();
-                     chartInstance = null;
+                      chartInstance.destroy();
+                      chartInstance = null;
                  }
                  lastSolutionData = {};
+                 interactiveGraphParams = {};
 
                  document.querySelectorAll('.tab-content').forEach(panel => {
-                     if(panel.id !== 'grafico') panel.innerHTML = '';
+                      if(panel.id !== 'grafico') panel.innerHTML = '';
                  });
             }
             
@@ -635,15 +694,15 @@
                 let stepsToggleHtml = '';
                 if (stepsHtml) {
                      stepsToggleHtml = `<div class="text-center my-4">
-                        <label class="toggle-steps-label">
-                           <input type="checkbox" class="toggle-steps-checkbox" data-target="steps-container-${method}">
-                           Mostrar paso a paso
-                        </label>
-                    </div>
-                    <div id="steps-container-${method}" class="hidden">
-                        ${variableSelectorHtml}
-                        <div id="steps-content-${method}">${stepsHtml}</div>
-                    </div>`;
+                         <label class="toggle-steps-label">
+                            <input type="checkbox" class="toggle-steps-checkbox" data-target="steps-container-${method}">
+                            Mostrar paso a paso
+                         </label>
+                     </div>
+                     <div id="steps-container-${method}" class="hidden">
+                         ${variableSelectorHtml}
+                         <div id="steps-content-${method}">${stepsHtml}</div>
+                     </div>`;
                 }
 
 
@@ -793,37 +852,33 @@
                 graphPlaceholder.classList.add('hidden');
                 zoomControls.classList.remove('hidden');
                 
-                let eq1Text, eq2Text;
-                // Equation 1
-                if (!Fraction.isZero(b)) {
-                    const m1 = Fraction.divide(Fraction.negate(a), b);
-                    const n1 = Fraction.divide(c, b);
-                    eq1Text = `Recta 1 (azul): $y = ${Fraction.formatForEquation(m1, 'x', true)} ${Fraction.formatForEquation(n1, '', Fraction.isZero(m1))}$`;
-                } else if (!Fraction.isZero(a)) {
-                    eq1Text = `Recta 1 (azul): $x = ${Fraction.format(Fraction.divide(c,a), true)}$ (Recta Vertical)`;
-                } else {
-                    eq1Text = 'Recta 1 (azul): Ecuación inválida (0=c)';
-                }
-                // Equation 2
-                if (!Fraction.isZero(e)) {
-                    const m2 = Fraction.divide(Fraction.negate(d), e);
-                    const n2 = Fraction.divide(f, e);
-                    eq2Text = `Recta 2 (roja): $y = ${Fraction.formatForEquation(m2, 'x', true)} ${Fraction.formatForEquation(n2, '', Fraction.isZero(m2))}$`;
-                } else if (!Fraction.isZero(d)) {
-                    eq2Text = `Recta 2 (roja): $x = ${Fraction.format(Fraction.divide(f,d), true)}$ (Recta Vertical)`;
-                } else {
-                    eq2Text = 'Recta 2 (roja): Ecuación inválida (0=f)';
-                }
+                // Set initial parameters for interactive graph
+                const line1Params = {
+                    type: !Fraction.isZero(b) ? 'slope_intercept' : (!Fraction.isZero(a) ? 'vertical' : 'invalid'),
+                    m: !Fraction.isZero(b) ? Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)) : null,
+                    n: !Fraction.isZero(b) ? Fraction.toDecimal(Fraction.divide(c, b)) : null,
+                    k: Fraction.isZero(b) && !Fraction.isZero(a) ? Fraction.toDecimal(Fraction.divide(c, a)) : null,
+                };
+                line1Params.original = {...line1Params};
 
-                const graphInfoDiv = document.getElementById('graph-info');
-                graphInfoDiv.innerHTML = createStep('Ecuaciones en forma explícita ($y=mx+n$)', `${eq1Text}<br>${eq2Text}`);
-                renderMathInElement(graphInfoDiv);
+                const line2Params = {
+                    type: !Fraction.isZero(e) ? 'slope_intercept' : (!Fraction.isZero(d) ? 'vertical' : 'invalid'),
+                    m: !Fraction.isZero(e) ? Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)) : null,
+                    n: !Fraction.isZero(e) ? Fraction.toDecimal(Fraction.divide(f, e)) : null,
+                    k: Fraction.isZero(e) && !Fraction.isZero(d) ? Fraction.toDecimal(Fraction.divide(f, d)) : null,
+                };
+                line2Params.original = {...line2Params};
+
+                interactiveGraphParams = {
+                    line1: line1Params,
+                    line2: line2Params
+                };
+
+                graphInfoDiv.innerHTML = createStep('Ecuaciones Interactivas', createInteractiveControls(interactiveGraphParams));
+                updateEquationText(); // Initial text update
 
                 if (chartInstance) chartInstance.destroy();
 
-                const generateLineData = (m, n, range) => [{x: range.min, y: m * range.min + n}, {x: range.max, y: m * range.max + n}];
-                const generateVerticalLineData = (k, range) => [{x: k, y: range.min}, {x: k, y: range.max}];
-                
                 let minX, maxX, minY, maxY;
                 const PADDING = 10;
                 if (caseType === 'unica' && solution) {
@@ -836,66 +891,17 @@
                     minY = -PADDING; maxY = PADDING;
                 }
                 
-                const initialXRange = { min: minX, max: maxX };
-                const initialYRange = { min: minY, max: maxY };
-
-                let line1Data = [];
-                if (!Fraction.isZero(b)) {
-                    line1Data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)), Fraction.toDecimal(Fraction.divide(c,b)), initialXRange);
-                } else if (!Fraction.isZero(a)) {
-                    line1Data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(c,a)), initialYRange);
-                }
-
-                let line2Data = [];
-                if (!Fraction.isZero(e)) {
-                    line2Data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)), Fraction.toDecimal(Fraction.divide(f,e)), initialXRange);
-                } else if (!Fraction.isZero(d)) {
-                    line2Data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(f,d)), initialYRange);
-                }
-
-                const datasets = [
-                    { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line1Data },
-                    { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: line2Data }
-                ];
-                
-                let chartTitle = 'Gráfico del Sistema';
-                if (caseType === 'unica' && showSolutionCheckbox.checked) {
-                    const solX_dec = Fraction.toDecimal(solution.x).toFixed(2);
-                    const solY_dec = Fraction.toDecimal(solution.y).toFixed(2);
-                    const solX_frac = Fraction.format(solution.x);
-                    const solY_frac = Fraction.format(solution.y);
-
-                    datasets.push({ label: `Solución`, data: [{x: Fraction.toDecimal(solution.x), y: Fraction.toDecimal(solution.y)}], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' });
-                    chartTitle = `Punto de corte: (x=${solX_frac} ≈ ${solX_dec}, y=${solY_frac} ≈ ${solY_dec})`;
-                } else if (caseType === 'infinitas') {
-                    chartTitle = "Infinitas Soluciones: Las rectas son coincidentes.";
-                    datasets[1].borderColor = '#60a5fa'; datasets[1].borderDash = [5, 5];
-                } else if (caseType === 'paralelas') {
-                    chartTitle = "Sin Solución: Las rectas son paralelas.";
-                }
-
                 handleZoom = (chart) => {
                     if (!chart || !chart.scales || !chart.scales.x) return;
-                    
-                    const xRange = { min: chart.scales.x.min, max: chart.scales.x.max };
-                    const yRange = { min: chart.scales.y.min, max: chart.scales.y.max };
-                    
-                    if (!Fraction.isZero(b)) {
-                        chart.data.datasets[0].data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)), Fraction.toDecimal(Fraction.divide(c, b)), xRange);
-                    } else if (!Fraction.isZero(a)) {
-                        chart.data.datasets[0].data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(c, a)), yRange);
-                    }
-
-                    if (!Fraction.isZero(e)) {
-                        chart.data.datasets[1].data = generateLineData(Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)), Fraction.toDecimal(Fraction.divide(f, e)), xRange);
-                    } else if (!Fraction.isZero(d)) {
-                        chart.data.datasets[1].data = generateVerticalLineData(Fraction.toDecimal(Fraction.divide(f, d)), yRange);
-                    }
-                    chart.update('none');
+                    updateInteractiveGraph();
                 };
 
                 chartInstance = new Chart(document.getElementById('chart').getContext('2d'), {
-                    data: { datasets: datasets },
+                    data: { datasets: [
+                        { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: [] },
+                        { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: [] },
+                        { label: `Solución`, data: [], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' }
+                    ] },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
@@ -904,25 +910,190 @@
                             y: { min: minY, max: maxY, title: { display: true, text: 'Eje Y' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }}
                         },
                         plugins: {
-                            title: { display: true, text: chartTitle, font: { size: 16 } },
+                            title: { display: true, text: 'Gráfico del Sistema', font: { size: 16 } },
                             legend: { position: 'top', labels: { font: { size: 12 } } },
                             zoom: {
-                                pan: { 
-                                    enabled: true, 
-                                    mode: 'xy',
-                                    onPanComplete: ({chart}) => handleZoom(chart)
-                                },
-                                zoom: { 
-                                    wheel: { enabled: true }, 
-                                    pinch: { enabled: true }, 
-                                    mode: 'xy',
-                                    onZoomComplete: ({chart}) => handleZoom(chart)
-                                }
+                                pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => handleZoom(chart) },
+                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => handleZoom(chart) }
                             }
                         }
                     }
                 });
+                
+                updateInteractiveGraph(); // Initial draw
             }
+
+            function createInteractiveControls(params) {
+                const sliderMin = -20;
+                const sliderMax = 20;
+                const sliderStep = 0.1;
+
+                const createSliderHtml = (id, label, value, min, max, step) => {
+                    const clampedValue = Math.max(min, Math.min(max, value));
+                    return `<div class="flex items-center space-x-3 text-sm mt-2">
+                        <label for="${id}_slider" class="w-28 font-medium text-gray-600">${label}:</label>
+                        <input type="range" id="${id}_slider" min="${min}" max="${max}" step="${step}" value="${clampedValue}" class="param-slider">
+                        <span id="${id}_value" class="font-mono text-indigo-600 w-12 text-right">${parseFloat(clampedValue).toFixed(2)}</span>
+                    </div>`;
+                };
+
+                const createControlsForLine = (lineNum, lineParams) => {
+                    const colorClass = lineNum === 1 ? 'blue' : 'red';
+                    let controlsHtml = `<div class="p-3 bg-${colorClass}-50 rounded-lg border border-${colorClass}-200">`;
+                    
+                    controlsHtml += `<div class="flex justify-between items-center">
+                        <div id="eq${lineNum}-text-display" class="font-semibold text-${colorClass}-800"></div>
+                        <button data-line="${lineNum}" class="reset-slider-btn">Reiniciar</button>
+                    </div>`;
+                    
+                    if (lineParams.type === 'slope_intercept') {
+                        controlsHtml += createSliderHtml(`m${lineNum}`, 'Pendiente (m)', lineParams.m, sliderMin, sliderMax, sliderStep);
+                        controlsHtml += createSliderHtml(`n${lineNum}`, 'Ordenada (n)', lineParams.n, sliderMin, sliderMax, sliderStep);
+                    } else if (lineParams.type === 'vertical') {
+                        controlsHtml += createSliderHtml(`k${lineNum}`, 'Posición X (k)', lineParams.k, sliderMin, sliderMax, sliderStep);
+                    } else {
+                        controlsHtml += `<p class="text-sm text-gray-500 mt-2">Ecuación inválida (0x + 0y = c)</p>`;
+                    }
+                    controlsHtml += '</div>';
+                    return controlsHtml;
+                };
+
+                let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 interactive-controls">';
+                html += createControlsForLine(1, params.line1);
+                html += createControlsForLine(2, params.line2);
+                html += '</div>';
+
+                return html;
+            }
+            
+            function handleResetSliders(lineNum) {
+                const lineKey = `line${lineNum}`;
+                const originalParams = interactiveGraphParams[lineKey].original;
+                if (!originalParams) return;
+
+                // Restore the current parameters from the backup
+                Object.assign(interactiveGraphParams[lineKey], originalParams);
+
+                // Visually update the sliders
+                if (originalParams.type === 'slope_intercept') {
+                    document.getElementById(`m${lineNum}_slider`).value = originalParams.m;
+                    document.getElementById(`n${lineNum}_slider`).value = originalParams.n;
+                } else if (originalParams.type === 'vertical') {
+                    document.getElementById(`k${lineNum}_slider`).value = originalParams.k;
+                }
+
+                // Redraw everything
+                updateInteractiveGraph();
+            }
+
+            function getEquationKatexString(lineNum, params) {
+                const color = lineNum === 1 ? 'azul' : 'roja';
+                const { type, m, n, k } = params;
+                if (type === 'slope_intercept') {
+                    const sign = n < 0 ? '-' : '+';
+                    const abs_n = Math.abs(n).toFixed(2);
+                    return `Recta ${lineNum} (${color}): $y = ${m.toFixed(2)}x ${sign} ${abs_n}$`;
+                }
+                if (type === 'vertical') {
+                    return `Recta ${lineNum} (${color}): $x = ${k.toFixed(2)}$`;
+                }
+                return `Recta ${lineNum} (${color}): Ecuación inválida`;
+            }
+
+            function updateEquationText() {
+                 const eq1Text = getEquationKatexString(1, interactiveGraphParams.line1);
+                 const eq1Div = document.getElementById('eq1-text-display');
+                 if (eq1Div) {
+                     eq1Div.innerHTML = eq1Text;
+                     renderMathInElement(eq1Div);
+                 }
+
+                 const eq2Text = getEquationKatexString(2, interactiveGraphParams.line2);
+                 const eq2Div = document.getElementById('eq2-text-display');
+                 if(eq2Div) {
+                    eq2Div.innerHTML = eq2Text;
+                    renderMathInElement(eq2Div);
+                 }
+            }
+            
+            function updateInteractiveGraph() {
+                if (!chartInstance) return;
+
+                // 1. Read slider values and update params object
+                const ids = {m1: 'm1', n1: 'n1', k1: 'k1', m2: 'm2', n2: 'n2', k2: 'k2'};
+                for (const key in ids) {
+                    const slider = document.getElementById(`${ids[key]}_slider`);
+                    if (slider) {
+                        const value = parseFloat(slider.value);
+                        const line = key.includes('1') ? 'line1' : 'line2';
+                        const param = key.charAt(0);
+                        interactiveGraphParams[line][param] = value;
+                        document.getElementById(`${ids[key]}_value`).textContent = value.toFixed(2);
+                    }
+                }
+
+                // 2. Update equation text display
+                updateEquationText();
+
+                // 3. Calculate solution and case type from interactive params
+                let solution = null;
+                let caseType = '';
+                const p = interactiveGraphParams;
+                const { line1: l1, line2: l2 } = p;
+
+                if (l1.type === 'slope_intercept' && l2.type === 'slope_intercept') {
+                    if (Math.abs(l1.m - l2.m) < 1e-9) { // Parallel or coincident
+                        caseType = Math.abs(l1.n - l2.n) < 1e-9 ? 'infinitas' : 'paralelas';
+                    } else { // Unique solution
+                        caseType = 'unica';
+                        const x = (l2.n - l1.n) / (l1.m - l2.m);
+                        const y = l1.m * x + l1.n;
+                        solution = { x, y };
+                    }
+                } else if (l1.type === 'slope_intercept' && l2.type === 'vertical') {
+                    caseType = 'unica';
+                    solution = { x: l2.k, y: l1.m * l2.k + l1.n };
+                } else if (l1.type === 'vertical' && l2.type === 'slope_intercept') {
+                     caseType = 'unica';
+                     solution = { x: l1.k, y: l2.m * l1.k + l2.n };
+                } else if (l1.type === 'vertical' && l2.type === 'vertical') {
+                    caseType = Math.abs(l1.k - l2.k) < 1e-9 ? 'infinitas' : 'paralelas';
+                }
+
+                // 4. Update chart datasets and title
+                const xRange = { min: chartInstance.scales.x.min, max: chartInstance.scales.x.max };
+                const yRange = { min: chartInstance.scales.y.min, max: chartInstance.scales.y.max };
+                const generateLineData = (m, n, range) => [{x: range.min, y: m * range.min + n}, {x: range.max, y: m * range.max + n}];
+                const generateVerticalLineData = (k, range) => [{x: k, y: range.min}, {x: k, y: range.max}];
+                
+                // Update line data
+                if(l1.type === 'slope_intercept') chartInstance.data.datasets[0].data = generateLineData(l1.m, l1.n, xRange);
+                else if(l1.type === 'vertical') chartInstance.data.datasets[0].data = generateVerticalLineData(l1.k, yRange);
+
+                if(l2.type === 'slope_intercept') chartInstance.data.datasets[1].data = generateLineData(l2.m, l2.n, xRange);
+                else if(l2.type === 'vertical') chartInstance.data.datasets[1].data = generateVerticalLineData(l2.k, yRange);
+
+                // Update solution point and title
+                let chartTitle = 'Gráfico del Sistema';
+                chartInstance.data.datasets[2].data = []; // Clear previous solution
+                if (caseType === 'unica' && showSolutionCheckbox.checked) {
+                    chartInstance.data.datasets[2].data = [{x: solution.x, y: solution.y}];
+                    chartTitle = `Punto de corte: (x=${solution.x.toFixed(2)}, y=${solution.y.toFixed(2)})`;
+                } else if (caseType === 'infinitas') {
+                    chartTitle = "Infinitas Soluciones: Las rectas son coincidentes.";
+                    chartInstance.data.datasets[1].borderDash = [5, 5];
+                } else if (caseType === 'paralelas') {
+                    chartTitle = "Sin Solución: Las rectas son paralelas.";
+                    chartInstance.data.datasets[1].borderDash = [];
+                }
+                 if(caseType !== 'infinitas') chartInstance.data.datasets[1].borderDash = [];
+
+                chartInstance.options.plugins.title.text = chartTitle;
+                
+                // 5. Update chart
+                chartInstance.update('none');
+            }
+
 
             // --- Initial call to render math for any pre-loaded content ---
             renderMathInElement(document.body);
