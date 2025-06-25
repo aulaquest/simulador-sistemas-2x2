@@ -1,363 +1,342 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulador de Ecuaciones Lineales 2x2 (Interactivo)</title>
+    <title>Simulador de Ecuaciones Lineales 2x2 (Avanzado)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Plugin para zoom y pan en el gráfico -->
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- KaTeX for LaTeX rendering -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMVIUpYHmvsplGIZjQsLMRdQSYNGEQUCmMvKCnmK2BqH0iK38" crossorigin="anonymous">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
 
     <style>
+        :root {
+            --bg-main: #f3f4f6; --bg-card: #ffffff; --text-main: #1f2937; --text-light: #4b5563;
+            --border-color: #e5e7eb; --brand-color: #4f46e5; --brand-color-hover: #4338ca;
+            --input-bg: #ffffff; --input-border: #d1d5db;
+        }
+        html.dark {
+            --bg-main: #111827; --bg-card: #1f2937; --text-main: #f9fafb; --text-light: #9ca3af;
+            --border-color: #374151; --brand-color: #818cf8; --brand-color-hover: #a78bfa;
+            --input-bg: #374151; --input-border: #4b5563;
+        }
         body {
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
+            font-family: 'Inter', sans-serif; font-size: 14px; display: flex; flex-direction: column;
+            min-height: 100vh; background-color: var(--bg-main); color: var(--text-main); transition: background-color 0.3s, color 0.3s;
         }
-        .container {
-            flex-grow: 1;
-        }
-        .tab-btn {
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-            padding: 0.5rem 1rem;
-        }
-        .tab-btn.active {
-            border-color: #4f46e5;
-            background-color: #4f46e5;
-            color: white;
-        }
-        .solution-step {
-            background-color: #f9fafb;
-            border-left: 3px solid #6366f1;
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.75rem;
-            border-radius: 0.25rem;
-        }
-        .step-content {
-            overflow-x: auto; /* Permite scroll horizontal en ecuaciones largas */
-            padding-bottom: 0.5rem; /* Espacio para la barra de scroll */
-        }
-        .input-field {
-            width: 55px;
-            text-align: center;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            padding: 0.5rem 0.25rem;
-            font-size: 1rem;
-            -moz-appearance: textfield;
-        }
-        .input-field.error {
-            border-color: #ef4444;
-            box-shadow: 0 0 0 2px #fecaca;
-        }
-        .input-field::-webkit-outer-spin-button,
-        .input-field::-webkit-inner-spin-button {
-            -webkit-appearance: none;
-            margin: 0;
-        }
-        .katex-display > .katex {
-             white-space: nowrap; /* Evita que KaTeX rompa la línea */
-        }
-        #chart {
-            touch-action: none; 
-        }
-        #notification-modal {
-            transition: opacity 0.3s ease;
-        }
-        .zoom-btn {
-            width: 40px;
-            height: 40px;
-            font-size: 24px;
-            line-height: 1;
-        }
-        /* New styles for step-by-step and variable choice */
-        .toggle-steps-label {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background-color: #eef2ff;
-            color: #4338ca;
-            border-radius: 0.375rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        .toggle-steps-label:hover {
-            background-color: #e0e7ff;
-        }
-        .toggle-steps-checkbox {
-            display: none;
-        }
-        .variable-selector {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 1rem;
-            padding: 0.5rem;
-            background-color: #f3f4f6;
-            border-radius: 0.5rem;
-        }
-        .variable-selector .description {
-            font-weight: 500;
-            color: #374151;
-        }
-        .variable-selector-label {
-            display: block;
-        }
-        .variable-selector-label input {
-            display: none;
-        }
-        .variable-selector-label span {
-            display: block;
-            padding: 0.4rem 1.2rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.375rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-weight: 500;
-        }
-        .variable-selector-label input:checked + span {
-            background-color: #4f46e5;
-            color: white;
-            border-color: #4f46e5;
-        }
-        .variable-selector-label input:disabled + span {
-            opacity: 0.5;
-            background-color: #e5e7eb;
-            cursor: not-allowed;
-        }
-        /* Styles for interactive graph controls */
-        .interactive-controls .param-slider {
-            flex-grow: 1;
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            border-radius: 5px;
-            background: #d3d3d3;
-            outline: none;
-            opacity: 0.7;
-            -webkit-transition: .2s;
-            transition: opacity .2s;
-        }
-        .interactive-controls .param-slider:hover {
-            opacity: 1;
-        }
-        .interactive-controls .param-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4f46e5;
-            cursor: pointer;
-        }
-        .interactive-controls .param-slider::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #4f46e5;
-            cursor: pointer;
-        }
-        .reset-slider-btn {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 0.375rem;
-            background-color: #e5e7eb;
-            color: #374151;
-            font-weight: 500;
-            transition: background-color 0.2s;
-        }
-        .reset-slider-btn:hover {
-            background-color: #d1d5db;
-        }
+        .main-container { background-color: var(--bg-card); border: 1px solid var(--border-color); }
+        .tab-btn.active { border-color: var(--brand-color); background-color: var(--brand-color); color: white; }
+        .solution-step { background-color: #f9fafb; border-left: 3px solid #6366f1; padding: 0.75rem 1rem; margin-bottom: 0.75rem; border-radius: 0.25rem;}
+        html.dark .solution-step { background-color: #374151; border-color: var(--brand-color); }
+        .input-field { background-color: var(--input-bg); border-color: var(--input-border); color: var(--text-main); width: 55px; text-align: center; border-radius: 0.375rem; padding: 0.5rem 0.25rem; font-size: 1rem; }
+        .input-field.error { border-color: #ef4444; }
+        .btn-primary { background-color: var(--brand-color); color: white; }
+        .btn-primary:hover { background-color: var(--brand-color-hover); }
+        .btn-secondary { background-color: var(--border-color); color: var(--text-main); }
+        .btn-secondary:hover { background-color: var(--text-light); }
 
+        .katex-display > .katex { white-space: nowrap; overflow-x: auto; padding-bottom: 8px;}
+        #chart { touch-action: none; }
+        .interactive-controls .param-slider::-webkit-slider-thumb { background: var(--brand-color); }
+        .interactive-controls .param-slider::-moz-range-thumb { background: var(--brand-color); }
+         /* Styles for interactive graph controls */
+         .interactive-controls .param-slider {
+            flex-grow: 1; -webkit-appearance: none; width: 100%; height: 8px; border-radius: 5px;
+            background: #d3d3d3; outline: none; opacity: 0.7; transition: opacity .2s;
+        }
+        html.dark .interactive-controls .param-slider { background: #4b5563; }
+        .interactive-controls .param-slider:hover { opacity: 1; }
+        .reset-slider-btn {
+            font-size: 0.75rem; padding: 0.25rem 0.75rem; border-radius: 0.375rem;
+            background-color: var(--border-color); color: var(--text-main); font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .reset-slider-btn:hover { background-color: var(--text-light); }
+
+        .toggle-steps-label {
+            display: inline-block; padding: 0.5rem 1rem; background-color: #eef2ff;
+            color: #4338ca; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: background-color 0.2s;
+        }
+        .toggle-steps-label:hover { background-color: #e0e7ff; }
+        .toggle-steps-checkbox { display: none; }
+        html.dark .toggle-steps-label { background-color: var(--border-color); color: var(--brand-color); }
+        html.dark .toggle-steps-label:hover { background-color: #4b5563; }
+
+        .variable-selector {
+            display: flex; justify-content: center; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0.5rem;
+            background-color: #f3f4f6; border-radius: 0.5rem;
+        }
+        html.dark .variable-selector { background-color: #374151; }
+        .variable-selector .description { font-weight: 500; color: #374151; }
+        html.dark .variable-selector .description { color: #d1d5db; }
+        .variable-selector-label input, .quiz-option-label input { display: none; }
+        .variable-selector-label span, .quiz-option-label span {
+            display: block; padding: 0.4rem 1.2rem; border: 1px solid #d1d5db; border-radius: 0.375rem;
+            cursor: pointer; transition: all 0.2s; font-weight: 500;
+        }
+        html.dark .variable-selector-label span, html.dark .quiz-option-label span { border-color: #4b5563; }
+        .variable-selector-label input:checked + span, .quiz-option-label input:checked + span { background-color: var(--brand-color); color: white; border-color: var(--brand-color); }
+        
+        #confetti-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .zoom-btn {
+            width: 48px; height: 48px; font-size: 28px; line-height: 1;
+        }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
-
+<body class="antialiased">
+    <canvas id="confetti-canvas"></canvas>
     <!-- Notification Modal -->
     <div id="notification-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
-            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-            </div>
-            <h3 class="text-lg leading-6 font-medium text-gray-900 mt-4">Error de Entrada</h3>
-            <div class="mt-2 px-7 py-3">
-                <p id="notification-message" class="text-sm text-gray-600">
-                    Mensaje de error aquí.
-                </p>
-            </div>
-            <div class="items-center px-4 py-3">
-                <button id="notification-close-btn" class="px-4 py-2 bg-red-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-300">
-                    Entendido
-                </button>
-            </div>
+        <div class="main-container rounded-lg shadow-xl p-6 max-w-sm w-full text-center">
+            <div id="notification-icon-container" class="mx-auto flex items-center justify-center h-12 w-12 rounded-full"></div>
+            <h3 id="notification-title" class="text-lg leading-6 font-medium mt-4"></h3>
+            <div class="mt-2 px-7 py-3"> <p id="notification-message" class="text-sm text-light"></p> </div>
+            <div class="items-center px-4 py-3"> <button id="notification-close-btn" class="px-4 py-2 text-white text-base font-medium rounded-md w-full shadow-sm">Entendido</button> </div>
         </div>
     </div>
-
-
-    <div class="container mx-auto p-3 md:p-4 max-w-4xl">
-        
-        <div class="bg-white p-5 rounded-lg shadow-md border border-gray-200 mb-6">
-            
-            <div class="flex items-center justify-center">
-                <div class="text-7xl font-light mr-4 text-gray-400" style="line-height: 1;">{</div>
-                <div class="flex flex-col space-y-3">
-                    <div class="flex items-center space-x-2 text-lg">
-                        <input id="a" type="text" class="input-field" placeholder="a">
-                        <span class="font-semibold">x +</span>
-                        <input id="b" type="text" class="input-field" placeholder="b">
-                        <span class="font-semibold">y =</span>
-                        <input id="c" type="text" class="input-field" placeholder="c">
-                    </div>
-                    <div class="flex items-center space-x-2 text-lg">
-                        <input id="d" type="text" class="input-field" placeholder="d">
-                        <span class="font-semibold">x +</span>
-                        <input id="e" type="text" class="input-field" placeholder="e">
-                        <span class="font-semibold">y =</span>
-                        <input id="f" type="text" class="input-field" placeholder="f">
-                    </div>
-                </div>
-            </div>
-             <div class="text-center text-gray-500 text-xs mt-4">
-                  <p>Puedes usar <strong>enteros</strong> (p. ej. `5`), <strong>racionales</strong> (p. ej. `3/4`) y <strong>decimales</strong> (p. ej. `1.5` o `1,5`).</p>
-                  <p>Los decimales se convertirán automáticamente a su fracción equivalente.</p>
-             </div>
-            <div class="mt-5 flex justify-center space-x-3">
-                <button id="solveBtn" class="bg-indigo-600 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-indigo-700 transition duration-300 shadow-sm">Resolver</button>
-                <button id="randomBtn" class="bg-gray-200 text-gray-700 font-semibold py-2 px-5 text-base rounded-lg hover:bg-gray-300 transition duration-300">Aleatorio</button>
-                <button id="resetBtn" class="bg-red-500 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-red-600 transition duration-300">Reiniciar</button>
-            </div>
-        </div>
-
-        <div class="mb-5">
-            <div class="flex flex-wrap justify-center border-b border-gray-300">
-                <button class="tab-btn active font-medium border-b-2 border-transparent rounded-t-md" data-tab="sustitucion">Sustitución</button>
-                <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="igualacion">Igualación</button>
-                <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="reduccion">Reducción</button>
-                <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="grafico">Gráfico</button>
-            </div>
-        </div>
-
-        <div id="contentPanels" class="bg-white p-4 md:p-6 rounded-lg shadow-md border border-gray-200 min-h-[400px]">
-            <div id="sustitucion" class="tab-content"></div>
-            <div id="igualacion" class="tab-content hidden"></div>
-            <div id="reduccion" class="tab-content hidden"></div>
-            <div id="grafico" class="tab-content hidden">
-                 <div id="graph-container" class="hidden">
-                      <div id="graph-info"></div>
-                      <div class="text-center my-3">
-                           <label for="showSolutionCheckbox" class="cursor-pointer text-base">
-                               <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500">
-                               Mostrar punto de corte
-                           </label>
-                      </div>
-                      <div class="relative" style="height: 65vh; max-height: 500px;">
-                           <canvas id="chart"></canvas>
-                           <!-- Zoom Buttons -->
-                          <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
-                               <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
-                               <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
-                           </div>
-                      </div>
-                 </div>
-                 <div id="graph-placeholder" class="text-center text-gray-500 pt-16">
-                      <p>Introduce los coeficientes del sistema de ecuaciones y pulsa "Resolver" para generar el gráfico.</p>
-                 </div>
+     <!-- Confirmation Modal -->
+    <div id="confirmation-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="main-container rounded-lg shadow-xl p-6 max-w-sm w-full">
+            <h3 class="text-lg leading-6 font-medium text-center">Confirmar Acción</h3>
+            <p id="confirmation-message" class="text-sm text-light mt-4 text-center"></p>
+            <div class="mt-6 flex justify-end gap-4">
+                <button id="cancel-action-btn" class="btn-secondary font-semibold py-2 px-4 rounded-lg">Cancelar</button>
+                <button id="confirm-action-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg">Sí, continuar</button>
             </div>
         </div>
     </div>
     
-    <footer class="text-center p-4 text-gray-500 text-sm">
-        Simulación creada por <a href="https://aulaquest.com" target="_blank" class="text-indigo-600 hover:underline font-semibold">AulaQuest</a>
-    </footer>
+    <div class="container mx-auto p-3 md:p-4 max-w-5xl">
+        <div class="absolute top-4 right-4">
+            <button id="theme-toggle" class="p-2 rounded-full btn-secondary">
+                <svg id="theme-icon-light" class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.95a1 1 0 010-1.414l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 011.414 0zM2 11a1 1 0 100-2H1a1 1 0 100 2h1zM4.95 5.05a1 1 0 011.414 0l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 01-1.414 0z"></path></svg>
+                <svg id="theme-icon-dark" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+            </button>
+        </div>
+        
+        <div id="main-controls" class="main-container p-5 rounded-lg shadow-md mb-6">
+            <div class="flex items-center justify-center">
+                <div class="text-7xl font-light mr-4 text-gray-400" style="line-height: 1;">{</div>
+                <div class="flex flex-col space-y-3">
+                    <div class="flex items-center space-x-2 text-lg">
+                        <input id="a" type="text" class="input-field" placeholder="a"><span class="font-semibold">x +</span>
+                        <input id="b" type="text" class="input-field" placeholder="b"><span class="font-semibold">y =</span>
+                        <input id="c" type="text" class="input-field" placeholder="c">
+                    </div>
+                    <div class="flex items-center space-x-2 text-lg">
+                        <input id="d" type="text" class="input-field" placeholder="d"><span class="font-semibold">x +</span>
+                        <input id="e" type="text" class="input-field" placeholder="e"><span class="font-semibold">y =</span>
+                        <input id="f" type="text" class="input-field" placeholder="f">
+                    </div>
+                </div>
+            </div>
+            <div class="text-center text-light text-xs mt-4">
+                <p>Usa <strong>enteros</strong> (p. ej. `5`), <strong>racionales</strong> (`3/4`) o <strong>decimales</strong> (`1.5`). Los decimales se convertirán a fracción.</p>
+            </div>
+            <div class="mt-5 flex justify-center flex-wrap gap-3">
+                <button id="solveBtn" class="btn-primary font-semibold py-2 px-5 text-base rounded-lg transition duration-300 shadow-sm">Resolver</button>
+                <button id="randomBtn" class="btn-secondary font-semibold py-2 px-5 text-base rounded-lg transition duration-300">Aleatorio</button>
+                <button id="examModeBtn" class="btn-secondary font-semibold py-2 px-5 text-base rounded-lg transition duration-300">Ponte a Prueba</button>
+                <button id="resetBtn" class="bg-red-500 text-white font-semibold py-2 px-5 text-base rounded-lg hover:bg-red-600 transition duration-300">Reiniciar</button>
+            </div>
+        </div>
+        
+        <div id="exam-mode-panel" class="main-container p-5 rounded-lg shadow-md mb-6 hidden">
+            <!-- VISTA 1: Configuración de la Prueba -->
+            <div id="exam-setup-view">
+                 <h3 class="text-xl font-bold text-center mb-4 text-brand-color">Configurar Prueba</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-6">
+                     <div>
+                         <h4 class="font-semibold text-center mb-2">Nivel de Dificultad</h4>
+                         <div class="flex justify-center gap-4">
+                            <label class="quiz-option-label"><input type="radio" name="difficulty" value="easy" checked><span>Fácil</span></label>
+                            <label class="quiz-option-label"><input type="radio" name="difficulty" value="hard"><span>Difícil</span></label>
+                         </div>
+                         <p class="text-xs text-light text-center mt-2">Fácil: solo soluciones enteras.</p>
+                     </div>
+                     <div>
+                        <h4 class="font-semibold text-center mb-2">Nº de Problemas</h4>
+                        <div class="flex justify-center gap-4">
+                           <label class="quiz-option-label"><input type="radio" name="num-problems" value="1"><span>1</span></label>
+                           <label class="quiz-option-label"><input type="radio" name="num-problems" value="3" checked><span>3</span></label>
+                           <label class="quiz-option-label"><input type="radio" name="num-problems" value="5"><span>5</span></label>
+                        </div>
+                    </div>
+                     <div>
+                        <h4 class="font-semibold text-center mb-2">Tiempo Límite</h4>
+                        <select id="time-limit" class="input-field w-full text-center">
+                            <option value="0">Sin límite</option>
+                            <option value="60">1 Minuto</option>
+                            <option value="300">5 Minutos</option>
+                            <option value="600">10 Minutos</option>
+                            <option value="900">15 Minutos</option>
+                            <option value="1800">30 Minutos</option>
+                        </select>
+                    </div>
+                 </div>
+                 <div class="text-center">
+                    <button id="startQuizBtn" class="btn-primary font-semibold py-2 px-8 text-lg rounded-lg">¡Comenzar!</button>
+                 </div>
+                 <div class="text-center mt-6">
+                    <button id="manualSetupBtn" class="text-sm text-light hover:text-brand-color underline">O introducir un problema manualmente (para profes)</button>
+                 </div>
+            </div>
+
+            <!-- VISTA 2: Preparación manual (para profes) -->
+            <div id="exam-manual-setup-view" class="hidden">
+                 <h3 class="text-xl font-bold text-center mb-4 text-brand-color">Preparar Prueba Manual</h3>
+                 <p class="text-center text-light mb-4">Introduce un sistema para que lo resuelva el estudiante.</p>
+                 <div class="flex items-center justify-center">
+                    <div class="text-7xl font-light mr-4 text-gray-400" style="line-height: 1;">{</div>
+                    <div class="flex flex-col space-y-3">
+                        <div class="flex items-center space-x-2 text-lg">
+                            <input id="exam_a" type="text" class="input-field" placeholder="a"><span class="font-semibold">x +</span>
+                            <input id="exam_b" type="text" class="input-field" placeholder="b"><span class="font-semibold">y =</span>
+                            <input id="exam_c" type="text" class="input-field" placeholder="c">
+                        </div>
+                        <div class="flex items-center space-x-2 text-lg">
+                            <input id="exam_d" type="text" class="input-field" placeholder="d"><span class="font-semibold">x +</span>
+                            <input id="exam_e" type="text" class="input-field" placeholder="e"><span class="font-semibold">y =</span>
+                            <input id="exam_f" type="text" class="input-field" placeholder="f">
+                        </div>
+                    </div>
+                </div>
+                 <div class="text-center my-4">
+                    <label for="manual-time-limit" class="font-semibold">Tiempo Límite (opcional)</label>
+                    <select id="manual-time-limit" class="input-field w-48 text-center ml-2">
+                        <option value="0">Sin límite</option>
+                        <option value="60">1 Minuto</option>
+                        <option value="300">5 Minutos</option>
+                        <option value="600">10 Minutos</option>
+                    </select>
+                 </div>
+                <div class="mt-5 flex justify-center gap-4">
+                    <button id="examRandomBtn" class="btn-secondary font-semibold py-2 px-6 rounded-lg">Generar Aleatorio</button>
+                    <button id="startManualExamBtn" class="btn-primary font-semibold py-2 px-6 rounded-lg">Empezar Prueba</button>
+                </div>
+                 <div class="mt-4 text-center">
+                    <button id="exitExamSetupBtn" class="text-sm text-light hover:text-brand-color">Volver al Inicio</button>
+                 </div>
+            </div>
+
+            <!-- VISTA 3: Resolviendo la prueba -->
+            <div id="exam-solve-view" class="hidden">
+                 <div class="flex justify-between items-center mb-2">
+                     <h3 id="quiz-progress-counter" class="text-xl font-bold text-brand-color"></h3>
+                     <div id="timer-display" class="text-xl font-mono text-light"></div>
+                 </div>
+                 <div id="progress-container" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 my-2 hidden">
+                    <div id="progress-bar" class="bg-brand-color h-2.5 rounded-full" style="width: 0%"></div>
+                 </div>
+                 <p class="text-center text-light mb-4">Resuelve el siguiente sistema de ecuaciones:</p>
+                 <div id="exam-system-display" class="my-4"></div>
+                 <p class="text-center text-light mb-4">Introduce tu solución y comprueba si es correcta.</p>
+                 <div class="flex justify-center items-center gap-4 text-lg">
+                     <div> <span class="font-semibold">x =</span> <input id="exam-x" type="text" class="input-field w-24"> </div>
+                     <div> <span class="font-semibold">y =</span> <input id="exam-y" type="text" class="input-field w-24"> </div>
+                 </div>
+                 <p class="text-center text-light text-xs mt-2">Introduce los resultados como enteros (ej: `4`) o fracciones (ej: `-7/3`).</p>
+                 <div class="mt-5 flex justify-center gap-4">
+                     <button id="checkExamBtn" class="btn-primary font-semibold py-2 px-6 rounded-lg">Corregir</button>
+                     <button id="exitExamBtn" class="btn-secondary font-semibold py-2 px-6 rounded-lg">Abandonar</button>
+                 </div>
+            </div>
+
+             <!-- VISTA 4: Resultado final -->
+             <div id="quiz-final-view" class="hidden text-center p-6">
+                <h3 class="text-3xl font-bold text-brand-color mb-4">¡Prueba completada!</h3>
+                <p id="quiz-final-score" class="text-xl text-light mb-2"></p>
+                <p id="quiz-final-message" class="text-lg mb-6"></p>
+                <button id="backToMainBtn" class="btn-primary font-semibold py-2 px-8 text-lg rounded-lg">Volver al Inicio</button>
+            </div>
+        </div>
+
+        <div id="solution-container" class="hidden">
+            <div class="mb-5">
+                <div class="flex flex-wrap justify-center border-b border-border-color gap-x-2 sm:gap-x-4">
+                    <button class="tab-btn active font-medium border-b-2 border-transparent rounded-t-md" data-tab="sustitucion">Sustitución</button>
+                    <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="igualacion">Igualación</button>
+                    <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="reduccion">Reducción</button>
+                    <button class="tab-btn font-medium border-b-2 border-transparent rounded-t-md" data-tab="grafico">Gráfico</button>
+                </div>
+            </div>
+            <div id="contentPanels" class="main-container p-4 md:p-6 rounded-lg shadow-md min-h-[400px]">
+                <div id="sustitucion" class="tab-content"></div> <div id="igualacion" class="tab-content hidden"></div>
+                <div id="reduccion" class="tab-content hidden"></div>
+                <div id="grafico" class="tab-content hidden">
+                     <div id="graph-container" class="hidden">
+                          <div id="graph-info"></div>
+                          <div class="text-center my-3 flex flex-wrap justify-center items-center gap-x-6 gap-y-2">
+                               <label for="showSolutionCheckbox" class="cursor-pointer text-base text-light"> <input type="checkbox" id="showSolutionCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500"> Mostrar punto de corte </label>
+                               <label for="showInterceptsCheckbox" class="cursor-pointer text-base text-light"> <input type="checkbox" id="showInterceptsCheckbox" class="mr-2 align-middle rounded border-gray-400 text-indigo-600 focus:ring-indigo-500"> Mostrar interceptos </label>
+                          </div>
+                          <div class="relative" style="height: 65vh; max-height: 500px;">
+                               <canvas id="chart"></canvas>
+                              <div id="zoom-controls" class="absolute bottom-4 right-4 flex flex-col space-y-2">
+                                   <button id="zoom-in-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">+</button>
+                                   <button id="zoom-out-btn" class="zoom-btn bg-gray-800 text-white rounded-full shadow-lg hover:bg-gray-700 transition">-</button>
+                               </div>
+                          </div>
+                     </div>
+                     <div id="graph-placeholder" class="text-center text-light pt-16">
+                          <p>Introduce los coeficientes y pulsa "Resolver" para generar el gráfico.</p>
+                     </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <footer class="text-center p-4 text-light text-sm"> Simulación creada por <a href="https://aulaquest.com" target="_blank" class="font-semibold text-brand-color hover:underline">AulaQuest</a> </footer>
 
     <script>
-        /**
-         * ----------------------------------------------------------------
-         * Objeto para manejar Fracciones (aritmética y formato)
-         * ----------------------------------------------------------------
-         */
+        // --- FRACTION OBJECT ---
         const Fraction = {
-            // Máximo común divisor (Euclidean algorithm)
-            gcd: (a, b) => {
-                a = Math.abs(a);
-                b = Math.abs(b);
-                while (b) {
-                    [a, b] = [b, a % b];
-                }
-                return a;
-            },
-
-            // Simplifica una fracción
+            gcd: (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) { [a, b] = [b, a % b]; } return a; },
             simplify: ({ num, den }) => {
-                if (den === 0) {
-                    throw new Error("Denominator cannot be zero.");
-                }
-                if (num === 0) {
-                    return { num: 0, den: 1 };
-                }
+                if (den === 0) throw new Error("Denominator cannot be zero.");
+                if (num === 0) return { num: 0, den: 1 };
                 const commonDivisor = Fraction.gcd(num, den);
-                let simplifiedNum = num / commonDivisor;
-                let simplifiedDen = den / commonDivisor;
-                
-                // Ensure sign is on the numerator
-                if (simplifiedDen < 0) {
-                    simplifiedDen = -simplifiedDen;
-                    simplifiedNum = -simplifiedNum;
-                }
-                
+                let simplifiedNum = num / commonDivisor; let simplifiedDen = den / commonDivisor;
+                if (simplifiedDen < 0) { simplifiedDen = -simplifiedDen; simplifiedNum = -simplifiedNum; }
                 return { num: simplifiedNum, den: simplifiedDen };
             },
-            
-            // Crea una fracción desde un string o número
             create: (value) => {
-                if (typeof value === 'object' && value !== null && 'num' in value && 'den' in value) {
-                    return value; // Already a fraction
-                }
+                if (typeof value === 'object' && value !== null && 'num' in value && 'den' in value) return value;
                 if (value === null || String(value).trim() === '') return null;
-                
                 let strValue = String(value).trim().replace(',', '.');
-                
                 if (strValue.includes('/')) {
                     const parts = strValue.split('/');
                     if (parts.length === 2) {
-                        const num = parseInt(parts[0], 10);
-                        const den = parseInt(parts[1], 10);
-                        if (!isNaN(num) && !isNaN(den) && den !== 0) {
-                            return Fraction.simplify({ num, den });
-                        }
+                        const num = parseInt(parts[0], 10); const den = parseInt(parts[1], 10);
+                        if (!isNaN(num) && !isNaN(den) && den !== 0) return Fraction.simplify({ num, den });
                     }
-                    return null; // Invalid fraction format
+                    return null;
                 } else {
                     const num = parseFloat(strValue);
                     if (isNaN(num)) return null;
-
-                    if (Number.isInteger(num)) {
-                        return { num: num, den: 1 };
-                    } else {
-                        // Convert decimal to fraction
-                        const len = strValue.split('.')[1].length;
-                        const den = Math.pow(10, len);
+                    if (Number.isInteger(num)) return { num: num, den: 1 };
+                    else {
+                        const len = strValue.split('.')[1].length; const den = Math.pow(10, len);
                         const numInt = num * den;
                         return Fraction.simplify({ num: Math.round(numInt), den: den });
                     }
                 }
             },
-            
-            // Operaciones Aritméticas
             add: (f1, f2) => Fraction.simplify({ num: f1.num * f2.den + f2.num * f1.den, den: f1.den * f2.den }),
             subtract: (f1, f2) => Fraction.simplify({ num: f1.num * f2.den - f2.num * f1.den, den: f1.den * f2.den }),
             multiply: (f1, f2) => Fraction.simplify({ num: f1.num * f2.num, den: f1.den * f2.den }),
@@ -366,186 +345,381 @@
                 return Fraction.simplify({ num: f1.num * f2.den, den: f1.den * f2.num });
             },
             negate: (f) => ({ num: -f.num, den: f.den }),
-            
-            // Utilidades de formato y comparación
             isZero: (f) => f.num === 0,
             isOne: (f) => f.num === 1 && f.den === 1,
             isNegativeOne: (f) => f.num === -1 && f.den === 1,
-            
             toDecimal: (f) => f.num / f.den,
-
-            // Formato para display (normal y LaTeX)
             format: (f, latex = false, forceSign = false) => {
-                if (f.den === 1) {
-                    const sign = f.num >= 0 && forceSign ? '+' : '';
-                    return sign + f.num.toString();
-                }
-                if (f.num === 0) {
-                   return forceSign ? '+ 0' : '0';
-                }
+                if (f.den === 1) { const sign = f.num >= 0 && forceSign ? '+' : ''; return sign + f.num.toString(); }
+                if (f.num === 0) return forceSign ? '+ 0' : '0';
                 if (latex) {
                     let sign = f.num < 0 ? '-' : (forceSign ? '+' : '');
-                    if (f.num < 0) {
-                        return `- \\frac{${Math.abs(f.num)}}{${f.den}}`;
-                    }
+                    if (f.num < 0) return `- \\frac{${Math.abs(f.num)}}{${f.den}}`;
                     return `${sign} \\frac{${f.num}}{${f.den}}`;
                 }
                 return `${f.num}/${f.den}`;
             },
-
             formatForEquation: (f, variable, isFirst = false) => {
                 if (Fraction.isZero(f)) return "";
-
                 let sign = f.num < 0 ? "-" : "+";
                 let absF = { num: Math.abs(f.num), den: f.den };
-
-                if (isFirst) {
-                    sign = f.num < 0 ? "-" : "";
-                }
-                
+                if (isFirst) sign = f.num < 0 ? "-" : "";
                 let coeffStr = "";
-                if (Fraction.isOne(absF) || Fraction.isNegativeOne(absF)) {
-                    coeffStr = variable;
-                } else {
-                    coeffStr = `${Fraction.format(absF, true)}${variable}`;
-                }
-                
+                if (Fraction.isOne(absF) && variable) coeffStr = variable;
+                else coeffStr = `${Fraction.format(absF, true)}${variable || ''}`;
                 return isFirst ? `${sign}${coeffStr}` : ` ${sign} ${coeffStr}`;
-            }
+            },
+             areEqual: (f1, f2) => f1.num === f2.num && f1.den === f2.den
         };
 
         document.addEventListener('DOMContentLoaded', function () {
-            // Register the zoom plugin with Chart.js
-            if(window.ChartZoom) Chart.register(ChartZoom);
+            // --- DOM ELEMENT REFERENCES ---
+            const dom = {
+                themeToggle: document.getElementById('theme-toggle'),
+                themeIconLight: document.getElementById('theme-icon-light'),
+                themeIconDark: document.getElementById('theme-icon-dark'),
+                solveBtn: document.getElementById('solveBtn'),
+                randomBtn: document.getElementById('randomBtn'),
+                resetBtn: document.getElementById('resetBtn'),
+                examModeBtn: document.getElementById('examModeBtn'),
+                tabs: document.querySelectorAll('.tab-btn'),
+                contentPanels: document.getElementById('contentPanels'),
+                solutionContainer: document.getElementById('solution-container'),
+                mainControls: document.getElementById('main-controls'),
+                examModePanel: document.getElementById('exam-mode-panel'),
+                examSetupView: document.getElementById('exam-setup-view'),
+                examManualSetupView: document.getElementById('exam-manual-setup-view'),
+                examSolveView: document.getElementById('exam-solve-view'),
+                quizFinalView: document.getElementById('quiz-final-view'),
+                quizFinalScore: document.getElementById('quiz-final-score'),
+                quizFinalMessage: document.getElementById('quiz-final-message'),
+                quizProgressCounter: document.getElementById('quiz-progress-counter'),
+                timerDisplay: document.getElementById('timer-display'),
+                examSystemDisplay: document.getElementById('exam-system-display'),
+                examX: document.getElementById('exam-x'),
+                examY: document.getElementById('exam-y'),
+                showSolutionCheckbox: document.getElementById('showSolutionCheckbox'),
+                showInterceptsCheckbox: document.getElementById('showInterceptsCheckbox'),
+                graphContainer: document.getElementById('graph-container'),
+                graphInfoDiv: document.getElementById('graph-info'),
+                graphPlaceholder: document.getElementById('graph-placeholder'),
+                notificationModal: document.getElementById('notification-modal'),
+                notificationTitle: document.getElementById('notification-title'),
+                notificationMessage: document.getElementById('notification-message'),
+                notificationIconContainer: document.getElementById('notification-icon-container'),
+                notificationCloseBtn: document.getElementById('notification-close-btn'),
+                confirmationModal: document.getElementById('confirmation-modal'),
+                confirmationMessage: document.getElementById('confirmation-message'),
+                confirmActionBtn: document.getElementById('confirm-action-btn'),
+                cancelActionBtn: document.getElementById('cancel-action-btn'),
+                zoomInBtn: document.getElementById('zoom-in-btn'),
+                zoomOutBtn: document.getElementById('zoom-out-btn'),
+                confettiCanvas: document.getElementById('confetti-canvas')
+            };
 
-            // Get DOM elements
-            const solveBtn = document.getElementById('solveBtn');
-            const randomBtn = document.getElementById('randomBtn');
-            const resetBtn = document.getElementById('resetBtn');
-            const tabs = document.querySelectorAll('.tab-btn');
-            const contentPanels = document.getElementById('contentPanels');
-            const showSolutionCheckbox = document.getElementById('showSolutionCheckbox');
-            const graphContainer = document.getElementById('graph-container');
-            const graphInfoDiv = document.getElementById('graph-info');
-            const graphPlaceholder = document.getElementById('graph-placeholder');
-            const notificationModal = document.getElementById('notification-modal');
-            const notificationMessage = document.getElementById('notification-message');
-            const notificationCloseBtn = document.getElementById('notification-close-btn');
-            const zoomInBtn = document.getElementById('zoom-in-btn');
-            const zoomOutBtn = document.getElementById('zoom-out-btn');
-            const zoomControls = document.getElementById('zoom-controls');
-
-            // State variables
+            // --- STATE VARIABLES ---
             let chartInstance = null;
             let lastSolutionData = {};
             let interactiveGraphParams = {};
+            let quizState = {};
 
-            // --- EVENT LISTENERS ---
-            solveBtn.addEventListener('click', solve);
-            randomBtn.addEventListener('click', generateRandomEquations);
-            resetBtn.addEventListener('click', resetSimulator);
-            
-            showSolutionCheckbox.addEventListener('change', () => {
-                if (getActiveTab() === 'grafico' && chartInstance) {
-                    updateInteractiveGraph(); // Update graph to show/hide solution
-                }
-            });
+            // --- INITIALIZATION ---
+            setupEventListeners();
+            initializeTheme();
+            if(window.ChartZoom) Chart.register(ChartZoom);
 
-            notificationCloseBtn.addEventListener('click', () => {
-                notificationModal.classList.add('hidden');
-            });
+            // --- EVENT LISTENER SETUP ---
+            function setupEventListeners() {
+                dom.themeToggle.addEventListener('click', toggleTheme);
+                dom.solveBtn.addEventListener('click', () => solveSystem(true));
+                dom.randomBtn.addEventListener('click', generateRandomEquations);
+                dom.resetBtn.addEventListener('click', resetSimulator);
+                dom.examModeBtn.addEventListener('click', showExamSetup);
+                dom.notificationCloseBtn.addEventListener('click', () => dom.notificationModal.classList.add('hidden'));
+                dom.cancelActionBtn.addEventListener('click', () => dom.confirmationModal.classList.add('hidden'));
+                
+                document.body.addEventListener('click', function(event) {
+                    const handler = {
+                        'checkExamBtn': checkQuizSolution,
+                        'exitExamBtn': () => showConfirmationModal("¿Seguro que quieres abandonar la prueba? Tu progreso se perderá.", resetSimulator),
+                        'exitExamSetupBtn': resetSimulator,
+                        'startQuizBtn': startQuiz,
+                        'manualSetupBtn': showManualExamSetup,
+                        'startManualExamBtn': startManualExam,
+                        'examRandomBtn': generateRandomForExam,
+                        'backToMainBtn': resetSimulator
+                    }[event.target.id];
+                    if (handler) handler();
+                });
 
-            zoomInBtn.addEventListener('click', () => chartInstance?.zoom(1.1));
-            zoomOutBtn.addEventListener('click', () => chartInstance?.zoom(0.9));
-            
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    tabs.forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
-                    
-                    tab.classList.add('active');
-                    const activeTabContent = document.getElementById(tab.dataset.tab);
-                    activeTabContent.classList.remove('hidden');
-                    
-                    if (Object.keys(lastSolutionData).length > 0) {
-                        if (tab.dataset.tab === 'grafico') {
-                            solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
+                dom.zoomInBtn.addEventListener('click', () => chartInstance?.zoom(1.1));
+                dom.zoomOutBtn.addEventListener('click', () => chartInstance?.zoom(0.9));
+                
+                dom.showSolutionCheckbox.addEventListener('change', () => getActiveTab() === 'grafico' && chartInstance && updateInteractiveGraph());
+                dom.showInterceptsCheckbox.addEventListener('change', () => getActiveTab() === 'grafico' && chartInstance && updateInteractiveGraph());
+
+                dom.tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        dom.tabs.forEach(t => t.classList.remove('active'));
+                        document.querySelectorAll('.tab-content').forEach(p => p.classList.add('hidden'));
+                        tab.classList.add('active');
+                        const activeTabContent = document.getElementById(tab.dataset.tab);
+                        activeTabContent.classList.remove('hidden');
+                        if (Object.keys(lastSolutionData).length > 0) {
+                            if (tab.dataset.tab === 'grafico') solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
+                            renderMathInElement(activeTabContent);
                         }
-                        renderMathInElement(activeTabContent);
+                    });
+                });
+
+                dom.contentPanels.addEventListener('change', function(e) {
+                    if (e.target.classList.contains('toggle-steps-checkbox')) {
+                        const container = document.getElementById(e.target.dataset.target);
+                        container.classList.toggle('hidden');
+                        if(!container.classList.contains('hidden')) {
+                            renderMathInElement(container);
+                        }
+                    }
+                    if (e.target.name && e.target.name.endsWith('-var')) {
+                         const method = e.target.name.split('-')[0];
+                         const { coeffs, solution, caseType } = lastSolutionData;
+                         if (!coeffs) return;
+                         const stepsContainer = document.getElementById(`steps-container-${method}`);
+                         const stepsContentDiv = document.getElementById(`steps-content-${method}`);
+                         const variable = e.target.value;
+                         if(!stepsContainer || !stepsContentDiv) return;
+                        let newStepsHtml = '';
+                        switch (method) {
+                            case 'sustitucion': newStepsHtml = getSustitucionStepsHtml({ ...coeffs, solution, caseType, variable }); break;
+                            case 'igualacion': newStepsHtml = getIgualacionStepsHtml({ ...coeffs, solution, caseType, variable }); break;
+                            case 'reduccion': newStepsHtml = getReduccionStepsHtml({ ...coeffs, solution, caseType, variable }); break;
+                        }
+                        stepsContentDiv.innerHTML = newStepsHtml;
+                        const oldVerification = stepsContainer.querySelector('.verification-step');
+                        if(oldVerification) oldVerification.remove();
+                        const verificationHtml = (caseType === 'unica') ? getVerificationHtml(lastSolutionData.coeffs, solution) : '';
+                        stepsContainer.insertAdjacentHTML('beforeend', verificationHtml);
+                        renderMathInElement(stepsContainer);
                     }
                 });
-            });
-
-            contentPanels.addEventListener('change', function(e) {
-                if (e.target.classList.contains('toggle-steps-checkbox')) {
-                    const targetId = e.target.dataset.target;
-                    document.getElementById(targetId)?.classList.toggle('hidden');
-                }
                 
-                // Handle variable choice changes
-                if (e.target.name && e.target.name.endsWith('-var')) {
-                    const method = e.target.name.split('-')[0];
-                    const variable = e.target.value;
-                    const { coeffs, solution, caseType } = lastSolutionData;
-                    if (!coeffs) return;
+                dom.graphInfoDiv.addEventListener('input', (e) => e.target.classList.contains('param-slider') && updateInteractiveGraph());
+                dom.graphInfoDiv.addEventListener('click', (e) => e.target.classList.contains('reset-slider-btn') && handleResetSliders(e.target.dataset.line));
+            }
 
-                    let newStepsHtml = '';
-                    switch (method) {
-                        case 'sustitucion':
-                            newStepsHtml = getSustitucionStepsHtml({ ...coeffs, solution, caseType, variable });
-                            break;
-                        case 'igualacion':
-                            newStepsHtml = getIgualacionStepsHtml({ ...coeffs, solution, caseType, variable });
-                            break;
-                        case 'reduccion':
-                            newStepsHtml = getReduccionStepsHtml({ ...coeffs, solution, caseType, variable });
-                            break;
-                    }
+            // --- THEME MANAGEMENT ---
+            function initializeTheme() {
+                if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                    document.documentElement.classList.add('dark');
+                    dom.themeIconLight.classList.add('hidden');
+                    dom.themeIconDark.classList.remove('hidden');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    dom.themeIconLight.classList.remove('hidden');
+                    dom.themeIconDark.classList.add('hidden');
+                }
+            }
+            function toggleTheme() {
+                const isDark = document.documentElement.classList.toggle('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                dom.themeIconLight.classList.toggle('hidden', isDark);
+                dom.themeIconDark.classList.toggle('hidden', !isDark);
+            }
 
-                    const stepsContentDiv = document.getElementById(`steps-content-${method}`);
-                    if (stepsContentDiv) {
-                        stepsContentDiv.innerHTML = newStepsHtml;
-                        renderMathInElement(stepsContentDiv);
-                    }
-                }
-            });
-
-            graphInfoDiv.addEventListener('input', (e) => {
-                if(e.target.classList.contains('param-slider')) {
-                    updateInteractiveGraph();
-                }
-            });
-            graphInfoDiv.addEventListener('click', (e) => {
-                if (e.target.classList.contains('reset-slider-btn')) {
-                    const lineNum = e.target.dataset.line;
-                    handleResetSliders(lineNum);
-                }
-            });
-            
-            // --- UTILITY FUNCTIONS ---
-            function showNotification(message) {
-                notificationMessage.textContent = message;
-                notificationModal.classList.remove('hidden');
+            // --- UI & NOTIFICATION ---
+            function showNotification(title, message, type = 'error') {
+                const icons = {
+                    error: { bg: 'bg-red-100', svg: `<svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" /></svg>`, btn: 'bg-red-500' },
+                    success: { bg: 'bg-green-100', svg: `<svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`, btn: 'bg-green-500' }
+                };
+                dom.notificationTitle.textContent = title;
+                dom.notificationMessage.textContent = message;
+                dom.notificationIconContainer.className = `mx-auto flex items-center justify-center h-12 w-12 rounded-full ${icons[type].bg}`;
+                dom.notificationIconContainer.innerHTML = icons[type].svg;
+                dom.notificationCloseBtn.className = `px-4 py-2 text-white text-base font-medium rounded-md w-full shadow-sm ${icons[type].btn}`;
+                dom.notificationModal.classList.remove('hidden');
+            }
+            function showConfirmationModal(message, onConfirm) {
+                dom.confirmationMessage.textContent = message;
+                dom.confirmActionBtn.onclick = () => {
+                    onConfirm();
+                    dom.confirmationModal.classList.add('hidden');
+                };
+                dom.confirmationModal.classList.remove('hidden');
             }
 
             function renderMathInElement(elem) {
                 if (elem && window.renderMathInElement) {
-                    window.renderMathInElement(elem, {
-                        delimiters: [ {left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false} ],
-                        throwOnError: false
-                    });
+                    window.renderMathInElement(elem, { delimiters: [{left: "$$", right: "$$", display: true}, {left: "$", right: "$", display: false}], throwOnError: false });
+                }
+            }
+
+            // --- EXAM MODE ---
+            function showView(viewToShow) {
+                ['examSetupView', 'examManualSetupView', 'examSolveView', 'quizFinalView'].forEach(view => {
+                    dom[view].classList.add('hidden');
+                });
+                dom[viewToShow].classList.remove('hidden');
+            }
+
+            function showExamSetup() {
+                dom.mainControls.classList.add('hidden');
+                dom.solutionContainer.classList.add('hidden');
+                dom.examModePanel.classList.remove('hidden');
+                showView('examSetupView');
+            }
+
+            function showManualExamSetup() {
+                showView('examManualSetupView');
+                ['exam_a', 'exam_b', 'exam_c', 'exam_d', 'exam_e', 'exam_f'].forEach(id => document.getElementById(id).value = '');
+            }
+
+            function startQuiz() {
+                quizState = {
+                    difficulty: document.querySelector('input[name="difficulty"]:checked').value,
+                    totalProblems: parseInt(document.querySelector('input[name="num-problems"]:checked').value),
+                    timeLimit: parseInt(document.getElementById('time-limit').value),
+                    currentProblem: 0,
+                    correctAnswers: 0,
+                };
+                startTimer();
+                nextQuizProblem();
+            }
+            
+            function startManualExam() {
+                 const coeffs = getCoefficients('exam');
+                if(!coeffs) {
+                    showNotification("Error de Entrada", "Revisa los campos del sistema. Todos los valores deben ser números válidos.");
+                    return;
+                }
+                calculateSolutionInternal(coeffs);
+                quizState = {
+                    difficulty: 'manual',
+                    totalProblems: 1,
+                    timeLimit: parseInt(document.getElementById('manual-time-limit').value),
+                    currentProblem: 0,
+                    correctAnswers: 0,
+                };
+                startTimer();
+                nextQuizProblem();
+            }
+
+            function nextQuizProblem() {
+                quizState.currentProblem++;
+                if (quizState.difficulty !== 'manual') {
+                    generateQuizProblem(quizState.difficulty);
+                    calculateSolutionInternal(lastSolutionData.coeffs);
+                }
+                displayCurrentQuizProblem();
+            }
+
+            function displayCurrentQuizProblem() {
+                const {coeffs} = lastSolutionData;
+                const eq1 = `${Fraction.formatForEquation(coeffs.a, 'x', true)} ${Fraction.formatForEquation(coeffs.b, 'y')} = ${Fraction.format(coeffs.c)}`;
+                const eq2 = `${Fraction.formatForEquation(coeffs.d, 'x', true)} ${Fraction.formatForEquation(coeffs.e, 'y')} = ${Fraction.format(coeffs.f)}`;
+                dom.examSystemDisplay.innerHTML = `<div class="text-center text-2xl p-4 border border-border-color rounded-lg">$$ \\begin{cases} ${eq1} \\\\ ${eq2} \\end{cases} $$</div>`;
+                renderMathInElement(dom.examSystemDisplay);
+                
+                dom.quizProgressCounter.textContent = `Ejercicio ${quizState.currentProblem} de ${quizState.totalProblems}`;
+                showView('examSolveView');
+                
+                ['exam-x', 'exam-y'].forEach(id => { 
+                    const el = document.getElementById(id);
+                    el.value = ''; 
+                    el.classList.remove('error');
+                    el.disabled = false;
+                });
+                document.getElementById('checkExamBtn').disabled = false;
+            }
+
+            async function checkQuizSolution() {
+                if (Tone.context.state !== 'running') { await Tone.start(); }
+                
+                const userX = Fraction.create(dom.examX.value);
+                const userY = Fraction.create(dom.examY.value);
+                if(userX === null || userY === null) {
+                    dom.examX.classList.toggle('error', userX === null);
+                    dom.examY.classList.toggle('error', userY === null);
+                    return;
+                }
+
+                const { solution, caseType } = lastSolutionData;
+                let isCorrect = (caseType === 'unica' && Fraction.areEqual(userX, solution.x) && Fraction.areEqual(userY, solution.y));
+                
+                if (isCorrect) {
+                    quizState.correctAnswers++;
+                    playSuccessSound();
+                    launchConfetti();
+                    if (quizState.currentProblem >= quizState.totalProblems) {
+                        setTimeout(finishQuiz, 1200);
+                    } else {
+                        setTimeout(nextQuizProblem, 1200);
+                    }
+                } else {
+                     showNotification("Respuesta Incorrecta", "¡Inténtalo de nuevo!", 'error');
                 }
             }
             
-            function getCoefficients() {
-                const values = {};
-                const inputIds = ['a', 'b', 'c', 'd', 'e', 'f'];
+            function finishQuiz() {
+                stopTimer();
+                const { correctAnswers, totalProblems } = quizState;
+                dom.quizFinalScore.textContent = `Tu puntuación: ${correctAnswers} de ${totalProblems}`;
+                let message = "";
+                const percentage = (correctAnswers / totalProblems) * 100;
+                if(percentage === 100) message = "¡Fantástico! Has dominado todos los problemas. ¡Sigue así!";
+                else if(percentage >= 70) message = "¡Muy buen trabajo! Estás en el camino correcto.";
+                else message = "¡No te rindas! La práctica hace al maestro. Sigue estudiando.";
+
+                dom.quizFinalMessage.textContent = message;
+                showView('quizFinalView');
+            }
+            
+            function startTimer() {
+                if(quizState.timeLimit > 0) {
+                    quizState.timeLeft = quizState.timeLimit;
+                    updateTimerDisplay();
+                    quizState.timerInterval = setInterval(() => {
+                        quizState.timeLeft--;
+                        updateTimerDisplay();
+                        if (quizState.timeLeft <= 0) {
+                            timeUp();
+                        }
+                    }, 1000);
+                } else {
+                    dom.timerDisplay.textContent = "";
+                }
+            }
+            function stopTimer() {
+                if(quizState.timerInterval) {
+                    clearInterval(quizState.timerInterval);
+                }
+            }
+            function updateTimerDisplay() {
+                const minutes = Math.floor(quizState.timeLeft / 60);
+                const seconds = quizState.timeLeft % 60;
+                dom.timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            function timeUp() {
+                stopTimer();
+                showNotification("¡Tiempo Terminado!", "Se ha acabado el tiempo. ¡No te preocupes, puedes volver a intentarlo!", "error");
+                document.getElementById('checkExamBtn').disabled = true;
+                dom.examX.disabled = true;
+                dom.examY.disabled = true;
+            }
+
+
+            // --- CORE LOGIC & SOLVERS ---
+            function getCoefficients(prefix = '') {
+                const finalPrefix = prefix ? `${prefix}_` : '';
+                const values = {}; 
+                const inputIds = ['a', 'b', 'c', 'd', 'e', 'f']; 
                 let hasError = false;
-
-                inputIds.forEach(id => document.getElementById(id).classList.remove('error'));
-
+                
                 for (const id of inputIds) {
-                    const inputEl = document.getElementById(id);
+                    const elId = `${finalPrefix}${id}`;
+                    const inputEl = document.getElementById(elId);
+                    if (!inputEl) continue;
+                    inputEl.classList.remove('error');
                     const parsedValue = Fraction.create(inputEl.value);
                     if (parsedValue === null) {
                         inputEl.classList.add('error');
@@ -555,261 +729,207 @@
                 }
                 return hasError ? null : values;
             }
-
-            function generateRandomEquations() {
+            function generateRandomEquations(autoSolve = true) {
+                const coeffs = generateQuizProblem('hard');
                 ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
-                    document.getElementById(id).value = Math.floor(Math.random() * 21) - 10;
+                     document.getElementById(id).value = Fraction.format(coeffs[id]);
                 });
-                solve();
+                if (autoSolve) solveSystem(true);
             }
-
-            function resetSimulator() {
+            function generateRandomForExam() {
+                 const coeffs = generateQuizProblem('hard');
                  ['a', 'b', 'c', 'd', 'e', 'f'].forEach(id => {
-                      const input = document.getElementById(id);
-                      input.value = '';
-                      input.classList.remove('error');
-                 });
-                 ['sustitucion', 'igualacion', 'reduccion', 'graph-info'].forEach(id => {
-                      const el = document.getElementById(id);
-                      if (el) el.innerHTML = '';
-                 });
-                 
-                 graphContainer.classList.add('hidden');
-                 graphPlaceholder.classList.remove('hidden');
-                 showSolutionCheckbox.checked = false;
-
-                 if (chartInstance) {
-                      chartInstance.destroy();
-                      chartInstance = null;
-                 }
-                 lastSolutionData = {};
-                 interactiveGraphParams = {};
-
-                 document.querySelectorAll('.tab-content').forEach(panel => {
-                      if(panel.id !== 'grafico') panel.innerHTML = '';
-                 });
+                    document.getElementById(`exam_${id}`).value = Fraction.format(coeffs[id]);
+                });
             }
-            
-            // --- FORMATTING FUNCTIONS ---
-
-            function createStep(title, content) {
-                return `<div class="solution-step">
-                            <h4 class="font-semibold text-base mb-2 text-indigo-700">${title}</h4>
-                            <div class="step-content">${content}</div>
-                        </div>`;
+            function generateQuizProblem(difficulty) {
+                let coeffs;
+                let determinant;
+                do {
+                    if (difficulty === 'easy') {
+                        const rand = () => Math.floor(Math.random() * 13) - 6; // -6 to 6
+                        const x = rand(); const y = rand();
+                        let a=rand(), b=rand(), d=rand(), e=rand();
+                        while(a*e - b*d === 0) { a=rand(); b=rand(); d=rand(); e=rand(); }
+                        const c = a*x + b*y; const f = d*x + e*y;
+                        coeffs = {a: Fraction.create(a), b: Fraction.create(b), c: Fraction.create(c), d: Fraction.create(d), e: Fraction.create(e), f: Fraction.create(f)};
+                    } else { // Hard mode
+                        const rand = () => Math.floor(Math.random() * 21) - 10;
+                        coeffs = {a: Fraction.create(rand()), b: Fraction.create(rand()), c: Fraction.create(rand()), d: Fraction.create(rand()), e: Fraction.create(rand()), f: Fraction.create(rand())};
+                    }
+                    // Recalculate determinant to ensure it's not zero for a valid problem
+                    determinant = Fraction.subtract(Fraction.multiply(coeffs.a, coeffs.e), Fraction.multiply(coeffs.b, coeffs.d));
+                } while (Fraction.isZero(determinant)); // Ensure system has a unique solution
+                
+                lastSolutionData.coeffs = coeffs;
+                return coeffs;
             }
-
-            function getActiveTab() {
-                return document.querySelector('.tab-btn.active')?.dataset.tab || 'sustitucion';
+            function resetSimulator() {
+                 ['a', 'b', 'c', 'd', 'e', 'f', 'exam_a', 'exam_b', 'exam_c', 'exam_d', 'exam_e', 'exam_f', 'exam-x', 'exam-y'].forEach(id => {
+                      const input = document.getElementById(id); if(input) {input.value = ''; input.classList.remove('error');}
+                 });
+                 dom.mainControls.classList.remove('hidden');
+                 dom.examModePanel.classList.add('hidden');
+                 dom.solutionContainer.classList.add('hidden');
+                 dom.graphContainer.classList.add('hidden');
+                 if(dom.graphPlaceholder) dom.graphPlaceholder.classList.remove('hidden');
+                 dom.showSolutionCheckbox.checked = false;
+                 dom.showInterceptsCheckbox.checked = false;
+                 if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+                 stopTimer();
+                 lastSolutionData = {}; interactiveGraphParams = {}; quizState = {};
             }
-
-            // --- CORE SOLVER FUNCTIONS ---
-
-            function solve() {
-                const coeffs = getCoefficients();
-                if (coeffs === null) {
-                    showNotification("Por favor, revisa los campos en rojo. Asegúrate de que todos los valores son correctos, no están vacíos y no hay divisiones por cero.");
-                    return;
-                }
-
+            function calculateSolutionInternal(coeffs) {
+                if (coeffs === null) return null;
                 lastSolutionData = { coeffs };
                 const { a, b, c, d, e, f } = coeffs;
-                // determinant = a*e - b*d
                 const determinant = Fraction.subtract(Fraction.multiply(a, e), Fraction.multiply(b, d));
-                
                 if (!Fraction.isZero(determinant)) {
-                    // x = (c*e - b*f) / determinant
                     const x_num = Fraction.subtract(Fraction.multiply(c, e), Fraction.multiply(b, f));
-                    // y = (a*f - c*d) / determinant
                     const y_num = Fraction.subtract(Fraction.multiply(a, f), Fraction.multiply(c, d));
-                    
-                    lastSolutionData.solution = { 
-                        x: Fraction.divide(x_num, determinant),
-                        y: Fraction.divide(y_num, determinant)
-                    };
+                    lastSolutionData.solution = { x: Fraction.divide(x_num, determinant), y: Fraction.divide(y_num, determinant) };
                     lastSolutionData.caseType = 'unica';
                 } else {
                     lastSolutionData.solution = null;
                     const check1 = Fraction.subtract(Fraction.multiply(a, f), Fraction.multiply(c, d));
-                    const check2 = Fraction.subtract(Fraction.multiply(c, e), Fraction.multiply(b, f));
-                    lastSolutionData.caseType = (Fraction.isZero(check1) && Fraction.isZero(check2)) ? "infinitas" : "paralelas";
+                    lastSolutionData.caseType = Fraction.isZero(check1) ? "infinitas" : "paralelas";
+                }
+                return coeffs;
+            }
+            function solveSystem(recalculate = true) {
+                const coeffs = recalculate ? calculateSolutionInternal(getCoefficients('')) : lastSolutionData.coeffs;
+                if (coeffs === null) {
+                    showNotification("Error de Entrada", "Revisa los campos en rojo. Asegúrate de que todos los valores son correctos.");
+                    return;
                 }
                 
-                solveBySustitucion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
-                solveByIgualacion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
-                solveByReduccion(coeffs, lastSolutionData.solution, lastSolutionData.caseType);
-
+                dom.solutionContainer.classList.remove('hidden');
+                const { solution, caseType } = lastSolutionData;
+                solveBySustitucion(coeffs, solution, caseType);
+                solveByIgualacion(coeffs, solution, caseType);
+                solveByReduccion(coeffs, solution, caseType);
                 const activeTab = getActiveTab();
-                if (activeTab === 'grafico') {
-                    solveByGrafico(lastSolutionData.coeffs, lastSolutionData.solution, lastSolutionData.caseType);
-                }
-                
-                const activePanel = document.getElementById(activeTab);
-                if (activePanel) {
-                    renderMathInElement(activePanel);
-                }
+                if (activeTab === 'grafico') solveByGrafico(coeffs, solution, caseType);
+                renderMathInElement(document.getElementById(activeTab));
+            }
+            function createStep(title, content) {
+                return `<div class="solution-step">
+                            <h4 class="font-semibold text-base mb-2 text-indigo-700 dark:text-indigo-400">${title}</h4>
+                            <div class="step-content">${content}</div>
+                        </div>`;
             }
 
+            // --- ALGEBRAIC METHODS UI ---
+            function getVerificationHtml(coeffs, solution) {
+                const {a, b, c, d, e, f} = coeffs;
+                const check1_lhs = Fraction.add(Fraction.multiply(a, solution.x), Fraction.multiply(b, solution.y));
+                const check2_lhs = Fraction.add(Fraction.multiply(d, solution.x), Fraction.multiply(e, solution.y));
+
+                const eq1_ok = Fraction.areEqual(check1_lhs, c);
+                const eq2_ok = Fraction.areEqual(check2_lhs, f);
+                
+                const html = `
+                    <div class="verification-step mt-4 p-3 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-green-700 rounded-lg">
+                        <h4 class="font-bold text-green-800 dark:text-green-400 mb-2 text-center">Comprobación de la Solución</h4>
+                        <div class="step-content">
+                            <p class="mb-2">Sustituimos $x=${Fraction.format(solution.x, true)}$ y $y=${Fraction.format(solution.y, true)}$ en la Ecuación 1:</p>
+                            <p class="text-center text-lg mb-2">$$ ${Fraction.formatForEquation(a, `(${Fraction.format(solution.x, true)})`, true)} ${Fraction.formatForEquation(b, `(${Fraction.format(solution.y, true)})`)} = ${Fraction.format(check1_lhs, true)} $$</p>
+                            <p class="text-center font-bold">${Fraction.format(check1_lhs, true)} = ${Fraction.format(c, true)} ${eq1_ok ? '<span class="text-green-500">✓</span>' : '<span class="text-red-500">✗</span>'}</p>
+                            <hr class="my-3 border-gray-300 dark:border-gray-600">
+                            <p class="mb-2">Sustituimos en la Ecuación 2:</p>
+                            <p class="text-center text-lg mb-2">$$ ${Fraction.formatForEquation(d, `(${Fraction.format(solution.x, true)})`, true)} ${Fraction.formatForEquation(e, `(${Fraction.format(solution.y, true)})`)} = ${Fraction.format(check2_lhs, true)} $$</p>
+                            <p class="text-center font-bold">${Fraction.format(check2_lhs, true)} = ${Fraction.format(f, true)} ${eq2_ok ? '<span class="text-green-500">✓</span>' : '<span class="text-red-500">✗</span>'}</p>
+                        </div>
+                    </div>`;
+                return html;
+            }
             function buildAlgebraicMethodUI(method, title, stepsHtml, solution, caseType, options = {}) {
                 let finalSolutionHtml = '';
                 if (caseType === 'unica') {
-                    finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                        <h4 class="text-base font-bold text-green-800">Solución Final</h4>
-                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
+                    finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-green-700 rounded-lg text-center">
+                        <h4 class="text-base font-bold text-green-800 dark:text-green-400">Solución Final</h4>
+                        <p class="text-xl font-mono text-green-900 dark:text-green-300 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
                     </div>`;
                 } else {
-                    finalSolutionHtml = `<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-center">
-                        <h4 class="text-base font-bold text-yellow-800">${caseType === 'infinitas' ? 'Infinitas Soluciones' : 'Sin Solución'}</h4>
-                        <p class="text-base text-yellow-900 mt-1">${caseType === 'infinitas' ? 'Las rectas son coincidentes.' : 'Las rectas son paralelas.'}</p>
+                    finalSolutionHtml = `<div class="mb-4 p-3 bg-yellow-50 dark:bg-gray-800 border border-yellow-300 dark:border-yellow-600 rounded-lg text-center">
+                        <h4 class="text-base font-bold text-yellow-800 dark:text-yellow-400">${caseType === 'infinitas' ? 'Infinitas Soluciones' : 'Sin Solución'}</h4>
+                        <p class="text-base text-yellow-900 dark:text-yellow-300 mt-1">${caseType === 'infinitas' ? 'Las rectas son coincidentes.' : 'Las rectas son paralelas.'}</p>
                     </div>`;
                 }
-
                 let variableSelectorHtml = '';
                 if (caseType === 'unica' && options.variable && options.available) {
-                    const varX_checked = options.variable === 'x' ? 'checked' : '';
-                    const varY_checked = options.variable === 'y' ? 'checked' : '';
-                    const varX_disabled = !options.available.includes('x') ? 'disabled' : '';
-                    const varY_disabled = !options.available.includes('y') ? 'disabled' : '';
-
+                    const varX_checked = options.variable === 'x' ? 'checked' : ''; const varY_checked = options.variable === 'y' ? 'checked' : '';
+                    const varX_disabled = !options.available.includes('x') ? 'disabled' : ''; const varY_disabled = !options.available.includes('y') ? 'disabled' : '';
                     let description = '';
-                    if (method === 'sustitucion') description = 'Despejar en Ec. 1:';
-                    if (method === 'igualacion') description = 'Igualar por variable:';
-                    if (method === 'reduccion') description = 'Eliminar variable:';
-
-                    variableSelectorHtml = `
-                        <div class="variable-selector">
-                            <span class="description">${description}</span>
-                            <label class="variable-selector-label">
-                                <input type="radio" name="${method}-var" value="x" ${varX_checked} ${varX_disabled}>
-                                <span>X</span>
-                            </label>
-                            <label class="variable-selector-label">
-                                <input type="radio" name="${method}-var" value="y" ${varY_checked} ${varY_disabled}>
-                                <span>Y</span>
-                            </label>
-                        </div>
-                    `;
+                    if (method === 'sustitucion') description = 'Despejar en Ec. 1:'; if (method === 'igualacion') description = 'Igualar por variable:'; if (method === 'reduccion') description = 'Eliminar variable:';
+                    variableSelectorHtml = `<div class="variable-selector"><span class="description">${description}</span><label class="variable-selector-label"><input type="radio" name="${method}-var" value="x" ${varX_checked} ${varX_disabled}><span>X</span></label><label class="variable-selector-label"><input type="radio" name="${method}-var" value="y" ${varY_checked} ${varY_disabled}><span>Y</span></label></div>`;
                 }
-
                 let stepsToggleHtml = '';
                 if (stepsHtml) {
-                     stepsToggleHtml = `<div class="text-center my-4">
-                         <label class="toggle-steps-label">
-                            <input type="checkbox" class="toggle-steps-checkbox" data-target="steps-container-${method}">
-                            Mostrar paso a paso
-                         </label>
-                     </div>
-                     <div id="steps-container-${method}" class="hidden">
-                         ${variableSelectorHtml}
-                         <div id="steps-content-${method}">${stepsHtml}</div>
-                     </div>`;
+                    const verificationHtml = (caseType === 'unica') ? getVerificationHtml(lastSolutionData.coeffs, solution) : '';
+                    stepsToggleHtml = `<div class="text-center my-4"><label class="toggle-steps-label"><input type="checkbox" class="toggle-steps-checkbox" data-target="steps-container-${method}">Mostrar desarrollo</label></div><div id="steps-container-${method}" class="hidden">${variableSelectorHtml}<div id="steps-content-${method}">${stepsHtml}</div>${verificationHtml}</div>`;
                 }
-
-
                 const container = document.getElementById(method);
                 container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">${title}</h3>${finalSolutionHtml}${stepsToggleHtml}`;
             }
-            
-            // --- ALGEBRAIC METHOD IMPLEMENTATIONS ---
 
+            // --- ALGEBRAIC STEP-BY-STEP HTML ---
             function getSustitucionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
-                if (caseType !== 'unica' || !variable) return '';
-                const { x, y } = solution;
-                let stepsHtml = '';
+                if (caseType !== 'unica' || !variable) return ''; const { x, y } = solution; let stepsHtml = '';
                 if (variable === 'y') {
-                    const y_const = Fraction.divide(c, b);
-                    const y_x_coeff = Fraction.divide(Fraction.negate(a), b);
-                    const y_expr_str = `${Fraction.format(y_const, true)} ${Fraction.formatForEquation(y_x_coeff, 'x')}`;
+                    const y_const = Fraction.divide(c, b); const y_x_coeff = Fraction.divide(Fraction.negate(a), b); const y_expr_str = `${Fraction.format(y_const, true)} ${Fraction.formatForEquation(y_x_coeff, 'x')}`;
                     stepsHtml += createStep('1. Despejar $y$ en la 1ª ecuación', `$$... \\implies y = ${y_expr_str} $$`);
-                    stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, '')} \\left( ${y_expr_str} \\right) = ${Fraction.format(f, true)} $$`);
-                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
-                    stepsHtml += createStep('4. Encontrar $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
-                } else { // variable === 'x'
-                    const x_const = Fraction.divide(c, a);
-                    const x_y_coeff = Fraction.divide(Fraction.negate(b), a);
-                    const x_expr_str = `${Fraction.format(x_const, true)} ${Fraction.formatForEquation(x_y_coeff, 'y')}`;
+                    stepsHtml += createStep('2. Sustituir $y$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, 'x', true)} ${Fraction.formatForEquation(e, '', true)} \\left( ${y_expr_str} \\right) = ${Fraction.format(f, true)} $$`);
+                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`); stepsHtml += createStep('4. Encontrar $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                } else {
+                    const x_const = Fraction.divide(c, a); const x_y_coeff = Fraction.divide(Fraction.negate(b), a); const x_expr_str = `${Fraction.format(x_const, true)} ${Fraction.formatForEquation(x_y_coeff, 'y')}`;
                     stepsHtml += createStep('1. Despejar $x$ en la 1ª ecuación', `$$... \\implies x = ${x_expr_str} $$`);
-                    stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, '')}\\left( ${x_expr_str} \\right) ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} $$`);
-                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
-                    stepsHtml += createStep('4. Encontrar $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                    stepsHtml += createStep('2. Sustituir $x$ en la 2ª ecuación', `$$ ${Fraction.formatForEquation(d, '', true)}\\left( ${x_expr_str} \\right) ${Fraction.formatForEquation(e, 'y')} = ${Fraction.format(f, true)} $$`);
+                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`); stepsHtml += createStep('4. Encontrar $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
                 }
                 return stepsHtml;
             }
-
             function solveBySustitucion(coeffs, solution, caseType, initialVariable = 'y') {
-                const availableChoices = [];
-                if (!Fraction.isZero(coeffs.b)) availableChoices.push('y');
-                if (!Fraction.isZero(coeffs.a)) availableChoices.push('x');
-                
-                let variable = initialVariable;
-                if (!availableChoices.includes(variable)) {
-                    variable = availableChoices.length > 0 ? availableChoices[0] : null;
-                }
-                
+                const availableChoices = []; if (!Fraction.isZero(coeffs.b)) availableChoices.push('y'); if (!Fraction.isZero(coeffs.a)) availableChoices.push('x');
+                let variable = initialVariable; if (!availableChoices.includes(variable)) { variable = availableChoices.length > 0 ? availableChoices[0] : null; }
                 const stepsHtml = getSustitucionStepsHtml({ ...coeffs, solution, caseType, variable });
                 buildAlgebraicMethodUI('sustitucion', 'Método de Sustitución', stepsHtml, solution, caseType, { variable, available: availableChoices });
             }
-
             function getIgualacionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
-                 if (caseType !== 'unica' || !variable) return '';
-                 const {x, y} = solution;
-                 let stepsHtml = '';
+                 if (caseType !== 'unica' || !variable) return ''; const {x, y} = solution; let stepsHtml = '';
                  if (variable === 'x') {
-                    const x1_expr = `${Fraction.format(Fraction.divide(c,a),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(b),a), 'y')}`;
-                    const x2_expr = `${Fraction.format(Fraction.divide(f,d),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(e),d), 'y')}`;
+                    const x1_expr = `${Fraction.format(Fraction.divide(c,a),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(b),a), 'y')}`; const x2_expr = `${Fraction.format(Fraction.divide(f,d),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(e),d), 'y')}`;
                     stepsHtml += createStep('1. Despejar $x$ en ambas ecuaciones', `Ec. 1: $ x = ${x1_expr} $<br>Ec. 2: $ x = ${x2_expr} $`);
                     stepsHtml += createStep('2. Igualar las expresiones para $x$', `$$ ${x1_expr} = ${x2_expr} $$`);
-                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
-                    stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
-                 } else { // variable === 'y'
-                    const y1_expr = `${Fraction.format(Fraction.divide(c,b),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(a),b), 'x')}`;
-                    const y2_expr = `${Fraction.format(Fraction.divide(f,e),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(d),e), 'x')}`;
+                    stepsHtml += createStep('3. Resolver para $y$', `$$... \\implies y = ${Fraction.format(y, true)} $$`); stepsHtml += createStep('4. Encontrar $x$ usando $y$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
+                 } else {
+                    const y1_expr = `${Fraction.format(Fraction.divide(c,b),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(a),b), 'x')}`; const y2_expr = `${Fraction.format(Fraction.divide(f,e),true)} ${Fraction.formatForEquation(Fraction.divide(Fraction.negate(d),e), 'x')}`;
                     stepsHtml += createStep('1. Despejar $y$ en ambas ecuaciones', `Ec. 1: $ y = ${y1_expr} $<br>Ec. 2: $ y = ${y2_expr} $`);
                     stepsHtml += createStep('2. Igualar las expresiones para $y$', `$$ ${y1_expr} = ${y2_expr} $$`);
-                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
-                    stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
+                    stepsHtml += createStep('3. Resolver para $x$', `$$... \\implies x = ${Fraction.format(x, true)} $$`); stepsHtml += createStep('4. Encontrar $y$ usando $x$', `$$... \\implies y = ${Fraction.format(y, true)} $$`);
                  }
                  return stepsHtml;
             }
-
             function solveByIgualacion(coeffs, solution, caseType, initialVariable = 'x') {
-                const availableChoices = [];
-                if (!Fraction.isZero(coeffs.a) && !Fraction.isZero(coeffs.d)) availableChoices.push('x');
-                if (!Fraction.isZero(coeffs.b) && !Fraction.isZero(coeffs.e)) availableChoices.push('y');
-
-                let variable = initialVariable;
-                if (!availableChoices.includes(variable)) {
-                    variable = availableChoices.length > 0 ? availableChoices[0] : null;
-                }
-                
+                const availableChoices = []; if (!Fraction.isZero(coeffs.a) && !Fraction.isZero(coeffs.d)) availableChoices.push('x'); if (!Fraction.isZero(coeffs.b) && !Fraction.isZero(coeffs.e)) availableChoices.push('y');
+                let variable = initialVariable; if (!availableChoices.includes(variable)) { variable = availableChoices.length > 0 ? availableChoices[0] : null; }
                 const stepsHtml = getIgualacionStepsHtml({ ...coeffs, solution, caseType, variable });
                 buildAlgebraicMethodUI('igualacion', 'Método de Igualación', stepsHtml, solution, caseType, { variable, available: availableChoices });
             }
-
             function getReduccionStepsHtml({a, b, c, d, e, f, solution, caseType, variable}) {
-                if (caseType !== 'unica') return '';
-                const {x, y} = solution;
-                let stepsHtml = '';
+                if (caseType !== 'unica' || !variable) return ''; const {x, y} = solution; let stepsHtml = '';
                 if (variable === 'x') {
-                    const m1 = d;
-                    const m2 = Fraction.negate(a);
-                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) };
-                    const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
-                    const final_y_coeff = Fraction.add(eq1_mult.b, eq2_mult.e);
-                    const final_y_const = Fraction.add(eq1_mult.c, eq2_mult.f);
-                    
+                    const m1 = d; const m2 = Fraction.negate(a);
+                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) }; const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
+                    const final_y_coeff = Fraction.add(eq1_mult.b, eq2_mult.e); const final_y_const = Fraction.add(eq1_mult.c, eq2_mult.f);
                     stepsHtml += createStep('1. Preparar la multiplicación', `$$ \\begin{cases} ${Fraction.formatForEquation(a,'x',true)} ${Fraction.formatForEquation(b,'y')} = ${Fraction.format(c,true)} & \\xrightarrow{\\times (${Fraction.format(m1)})} \\\\ ${Fraction.formatForEquation(d,'x',true)} ${Fraction.formatForEquation(e,'y')} = ${Fraction.format(f,true)} & \\xrightarrow{\\times (${Fraction.format(m2)})} \\end{cases} $$`);
                     stepsHtml += createStep('2. Sistema resultante', `$$ \\begin{cases} ${Fraction.formatForEquation(eq1_mult.a,'x',true)} ${Fraction.formatForEquation(eq1_mult.b,'y')} = ${Fraction.format(eq1_mult.c)} \\\\ ${Fraction.formatForEquation(eq2_mult.d,'x',true)} ${Fraction.formatForEquation(eq2_mult.e,'y')} = ${Fraction.format(eq2_mult.f)} \\end{cases} $$`);
                     stepsHtml += createStep('3. Sumar y resolver para $y$', `$$ ${Fraction.formatForEquation(final_y_coeff, 'y', true)} = ${Fraction.format(final_y_const,true)} \\implies y = ${Fraction.format(y, true)} $$`);
                     stepsHtml += createStep('4. Encontrar $x$ por sustitución', `$$... \\implies x = ${Fraction.format(x, true)} $$`);
-                } else { // variable === 'y'
-                    const m1 = e;
-                    const m2 = Fraction.negate(b);
-                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) };
-                    const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
-                    const final_x_coeff = Fraction.add(eq1_mult.a, eq2_mult.d);
-                    const final_x_const = Fraction.add(eq1_mult.c, eq2_mult.f);
-
+                } else {
+                    const m1 = e; const m2 = Fraction.negate(b);
+                    const eq1_mult = { a: Fraction.multiply(a, m1), b: Fraction.multiply(b, m1), c: Fraction.multiply(c, m1) }; const eq2_mult = { d: Fraction.multiply(d, m2), e: Fraction.multiply(e, m2), f: Fraction.multiply(f, m2) };
+                    const final_x_coeff = Fraction.add(eq1_mult.a, eq2_mult.d); const final_x_const = Fraction.add(eq1_mult.c, eq2_mult.f);
                     stepsHtml += createStep('1. Preparar la multiplicación', `$$ \\begin{cases} ${Fraction.formatForEquation(a,'x',true)} ${Fraction.formatForEquation(b,'y')} = ${Fraction.format(c,true)} & \\xrightarrow{\\times (${Fraction.format(m1)})} \\\\ ${Fraction.formatForEquation(d,'x',true)} ${Fraction.formatForEquation(e,'y')} = ${Fraction.format(f,true)} & \\xrightarrow{\\times (${Fraction.format(m2)})} \\end{cases} $$`);
                     stepsHtml += createStep('2. Sistema resultante', `$$ \\begin{cases} ${Fraction.formatForEquation(eq1_mult.a,'x',true)} ${Fraction.formatForEquation(eq1_mult.b,'y')} = ${Fraction.format(eq1_mult.c)} \\\\ ${Fraction.formatForEquation(eq2_mult.d,'x',true)} ${Fraction.formatForEquation(eq2_mult.e,'y')} = ${Fraction.format(eq2_mult.f)} \\end{cases} $$`);
                     stepsHtml += createStep('3. Sumar y resolver para $x$', `$$ ${Fraction.formatForEquation(final_x_coeff, 'x', true)} = ${Fraction.format(final_x_const,true)} \\implies x = ${Fraction.format(x, true)} $$`);
@@ -817,286 +937,229 @@
                 }
                 return stepsHtml;
             }
-
             function solveByReduccion(coeffs, solution, caseType, initialVariable = 'x') {
                 const {a, b, d, e} = coeffs;
-                if (caseType === 'unica' && (Fraction.isZero(a) || Fraction.isZero(b) || Fraction.isZero(d) || Fraction.isZero(e))) {
-                     const container = document.getElementById('reduccion');
-                    const finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
-                        <h4 class="text-base font-bold text-green-800">Solución Final</h4>
-                        <p class="text-xl font-mono text-green-900 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p>
-                    </div>`;
-                    
-                    const explanationHtml = createStep(
-                        'Nota sobre el Método de Reducción',
-                        'Cuando el coeficiente de una variable es 0, esa variable ya está prácticamente despejada en una de las ecuaciones. <br><br> En estos casos, el método de reducción no es el más práctico. La solución se encuentra de forma mucho más directa por <b>sustitución</b> o <b>igualación</b>.'
-                    );
-
-                    container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">Método de Reducción</h3>${finalSolutionHtml}${explanationHtml}`;
-                    renderMathInElement(container);
-                    return;
+                if (caseType === 'unica' && (Fraction.isZero(a) && Fraction.isZero(d) || Fraction.isZero(b) && Fraction.isZero(e))) {
+                    const container = document.getElementById('reduccion');
+                    const finalSolutionHtml = `<div class="mb-4 p-3 bg-green-50 dark:bg-gray-800 border border-green-200 dark:border-green-700 rounded-lg text-center"><h4 class="text-base font-bold text-green-800 dark:text-green-400">Solución Final</h4><p class="text-xl font-mono text-green-900 dark:text-green-300 mt-1">$$ x = ${Fraction.format(solution.x, true)} \\quad , \\quad y = ${Fraction.format(solution.y, true)} $$</p></div>`;
+                    const explanationHtml = createStep('Nota sobre el Método de Reducción', 'Uno de los coeficientes para la variable a eliminar es cero. En este caso, el método es trivial o no se puede aplicar directamente de la forma estándar. La solución se encuentra de forma más directa por <b>sustitución</b>.');
+                    container.innerHTML = `<h3 class="text-xl font-bold mb-4 text-center">Método de Reducción</h3>${finalSolutionHtml}${explanationHtml}`; renderMathInElement(container); return;
                 }
-
                 const availableChoices = ['x', 'y'];
                 const stepsHtml = getReduccionStepsHtml({ ...coeffs, solution, caseType, variable: initialVariable });
                 buildAlgebraicMethodUI('reduccion', 'Método de Reducción', stepsHtml, solution, caseType, { variable: initialVariable, available: availableChoices });
             }
 
-
-            // --- GRAPHICAL METHOD IMPLEMENTATION ---
-            
-            let handleZoom; // Declare here to be accessible in chart options
-
+            // --- GRAPHICAL METHOD ---
             function solveByGrafico({a, b, c, d, e, f}, solution, caseType) {
-                graphContainer.classList.remove('hidden');
-                graphPlaceholder.classList.add('hidden');
-                zoomControls.classList.remove('hidden');
-                
-                // Set initial parameters for interactive graph
-                const line1Params = {
-                    type: !Fraction.isZero(b) ? 'slope_intercept' : (!Fraction.isZero(a) ? 'vertical' : 'invalid'),
-                    m: !Fraction.isZero(b) ? Fraction.toDecimal(Fraction.divide(Fraction.negate(a), b)) : null,
-                    n: !Fraction.isZero(b) ? Fraction.toDecimal(Fraction.divide(c, b)) : null,
-                    k: Fraction.isZero(b) && !Fraction.isZero(a) ? Fraction.toDecimal(Fraction.divide(c, a)) : null,
+                dom.graphContainer.classList.remove('hidden'); dom.graphPlaceholder.classList.add('hidden');
+                const createParams = (coeffA, coeffB, coeffC) => {
+                    const p = { type: !Fraction.isZero(coeffB) ? 'slope_intercept' : (!Fraction.isZero(coeffA) ? 'vertical' : 'invalid'),
+                        m: !Fraction.isZero(coeffB) ? Fraction.toDecimal(Fraction.divide(Fraction.negate(coeffA), coeffB)) : null,
+                        n: !Fraction.isZero(coeffB) ? Fraction.toDecimal(Fraction.divide(coeffC, coeffB)) : null,
+                        k: Fraction.isZero(coeffB) && !Fraction.isZero(coeffA) ? Fraction.toDecimal(Fraction.divide(coeffC, coeffA)) : null,
+                    }; p.original = {...p}; return p;
                 };
-                line1Params.original = {...line1Params};
-
-                const line2Params = {
-                    type: !Fraction.isZero(e) ? 'slope_intercept' : (!Fraction.isZero(d) ? 'vertical' : 'invalid'),
-                    m: !Fraction.isZero(e) ? Fraction.toDecimal(Fraction.divide(Fraction.negate(d), e)) : null,
-                    n: !Fraction.isZero(e) ? Fraction.toDecimal(Fraction.divide(f, e)) : null,
-                    k: Fraction.isZero(e) && !Fraction.isZero(d) ? Fraction.toDecimal(Fraction.divide(f, d)) : null,
-                };
-                line2Params.original = {...line2Params};
-
-                interactiveGraphParams = {
-                    line1: line1Params,
-                    line2: line2Params
-                };
-
-                graphInfoDiv.innerHTML = createStep('Ecuaciones Interactivas', createInteractiveControls(interactiveGraphParams));
-                updateEquationText(); // Initial text update
-
+                interactiveGraphParams = { line1: createParams(a, b, c), line2: createParams(d, e, f) };
+                dom.graphInfoDiv.innerHTML = createStep('Ecuaciones Interactivas', createInteractiveControls(interactiveGraphParams));
+                updateEquationText();
                 if (chartInstance) chartInstance.destroy();
 
-                let minX, maxX, minY, maxY;
-                const PADDING = 10;
+                let minX, maxX, minY, maxY; const PADDING = 10;
                 if (caseType === 'unica' && solution) {
-                    const solX = Fraction.toDecimal(solution.x);
-                    const solY = Fraction.toDecimal(solution.y);
-                    minX = solX - PADDING; maxX = solX + PADDING;
-                    minY = solY - PADDING; maxY = solY + PADDING;
-                } else {
-                    minX = -PADDING; maxX = PADDING;
-                    minY = -PADDING; maxY = PADDING;
-                }
+                    const solX = Fraction.toDecimal(solution.x); const solY = Fraction.toDecimal(solution.y);
+                    minX = solX - PADDING; maxX = solX + PADDING; minY = solY - PADDING; maxY = solY + PADDING;
+                } else { minX = -PADDING; maxX = PADDING; minY = -PADDING; maxY = PADDING; }
                 
-                handleZoom = (chart) => {
-                    if (!chart || !chart.scales || !chart.scales.x) return;
-                    updateInteractiveGraph();
-                };
-
                 chartInstance = new Chart(document.getElementById('chart').getContext('2d'), {
                     data: { datasets: [
                         { label: `Recta 1`, borderColor: '#3b82f6', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: [] },
                         { label: `Recta 2`, borderColor: '#ef4444', borderWidth: 2.5, fill: false, pointRadius: 0, type: 'line', data: [] },
-                        { label: `Solución`, data: [], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' }
+                        { label: `Solución`, data: [], backgroundColor: '#f59e0b', pointRadius: 8, pointHoverRadius: 10, type: 'scatter' },
+                        { label: 'Interceptos', data: [], backgroundColor: ['#0ea5e9', '#0ea5e9', '#f43f5e', '#f43f5e'], pointRadius: 6, pointHoverRadius: 8, type: 'scatter' }
                     ] },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'linear', position: 'bottom', min: minX, max: maxX, title: { display: true, text: 'Eje X' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }},
-                            y: { min: minY, max: maxY, title: { display: true, text: 'Eje Y' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }}
+                            x: { type: 'linear', position: 'bottom', min: minX, max: maxX, title: { display: true, text: 'Eje X', color: 'var(--text-light)' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }, ticks: {color: 'var(--text-light)'} },
+                            y: { min: minY, max: maxY, title: { display: true, text: 'Eje Y', color: 'var(--text-light)' }, grid: { color: (c) => c.tick.value === 0 ? 'rgba(100,116,139,0.7)' : 'rgba(100,116,139,0.1)', lineWidth: (c) => c.tick.value === 0 ? 2 : 1 }, ticks: {color: 'var(--text-light)'} }
                         },
                         plugins: {
-                            title: { display: true, text: 'Gráfico del Sistema', font: { size: 16 } },
-                            legend: { position: 'top', labels: { font: { size: 12 } } },
-                            zoom: {
-                                pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => handleZoom(chart) },
-                                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => handleZoom(chart) }
-                            }
+                            title: { display: true, text: 'Gráfico del Sistema', font: { size: 16 }, color: 'var(--text-main)' },
+                            legend: { position: 'top', labels: { font: { size: 12 }, color: 'var(--text-main)' } },
+                            zoom: { pan: { enabled: true, mode: 'xy', onPanComplete: ({chart}) => updateInteractiveGraph()}, zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'xy', onZoomComplete: ({chart}) => updateInteractiveGraph()} }
                         }
                     }
                 });
-                
-                updateInteractiveGraph(); // Initial draw
+                updateInteractiveGraph();
             }
-
             function createInteractiveControls(params) {
-                const sliderMin = -20;
-                const sliderMax = 20;
-                const sliderStep = 0.1;
-
+                const sliderMin = -20, sliderMax = 20, sliderStep = 0.1;
                 const createSliderHtml = (id, label, value, min, max, step) => {
-                    const clampedValue = Math.max(min, Math.min(max, value));
-                    return `<div class="flex items-center space-x-3 text-sm mt-2">
-                        <label for="${id}_slider" class="w-28 font-medium text-gray-600">${label}:</label>
-                        <input type="range" id="${id}_slider" min="${min}" max="${max}" step="${step}" value="${clampedValue}" class="param-slider">
-                        <span id="${id}_value" class="font-mono text-indigo-600 w-12 text-right">${parseFloat(clampedValue).toFixed(2)}</span>
-                    </div>`;
+                    const clampedValue = Math.max(min, Math.min(max, value || 0));
+                    return `<div class="flex items-center space-x-3 text-sm mt-2"><label for="${id}_slider" class="w-28 font-medium text-light">${label}:</label><input type="range" id="${id}_slider" min="${min}" max="${max}" step="${step}" value="${clampedValue}" class="param-slider"><span id="${id}_value" class="font-mono text-brand-color w-12 text-right">${parseFloat(clampedValue).toFixed(2)}</span></div>`;
                 };
-
                 const createControlsForLine = (lineNum, lineParams) => {
                     const colorClass = lineNum === 1 ? 'blue' : 'red';
-                    let controlsHtml = `<div class="p-3 bg-${colorClass}-50 rounded-lg border border-${colorClass}-200">`;
-                    
-                    controlsHtml += `<div class="flex justify-between items-center">
-                        <div id="eq${lineNum}-text-display" class="font-semibold text-${colorClass}-800"></div>
-                        <button data-line="${lineNum}" class="reset-slider-btn">Reiniciar</button>
-                    </div>`;
-                    
+                    let controlsHtml = `<div class="p-3 bg-${colorClass}-50 dark:bg-gray-800 rounded-lg border border-${colorClass}-200 dark:border-${colorClass}-700/50">`;
+                    controlsHtml += `<div class="flex justify-between items-center"><div id="eq${lineNum}-text-display" class="font-semibold text-${colorClass}-800 dark:text-${colorClass}-300"></div><button data-line="${lineNum}" class="reset-slider-btn">Reiniciar</button></div>`;
                     if (lineParams.type === 'slope_intercept') {
                         controlsHtml += createSliderHtml(`m${lineNum}`, 'Pendiente (m)', lineParams.m, sliderMin, sliderMax, sliderStep);
                         controlsHtml += createSliderHtml(`n${lineNum}`, 'Ordenada (n)', lineParams.n, sliderMin, sliderMax, sliderStep);
                     } else if (lineParams.type === 'vertical') {
                         controlsHtml += createSliderHtml(`k${lineNum}`, 'Posición X (k)', lineParams.k, sliderMin, sliderMax, sliderStep);
-                    } else {
-                        controlsHtml += `<p class="text-sm text-gray-500 mt-2">Ecuación inválida (0x + 0y = c)</p>`;
-                    }
-                    controlsHtml += '</div>';
-                    return controlsHtml;
+                    } else { controlsHtml += `<p class="text-sm text-light mt-2">Ecuación inválida (0x + 0y = c)</p>`; }
+                    controlsHtml += '</div>'; return controlsHtml;
                 };
-
                 let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4 interactive-controls">';
-                html += createControlsForLine(1, params.line1);
-                html += createControlsForLine(2, params.line2);
-                html += '</div>';
-
-                return html;
+                html += createControlsForLine(1, params.line1); html += createControlsForLine(2, params.line2);
+                html += '</div>'; return html;
             }
-            
             function handleResetSliders(lineNum) {
-                const lineKey = `line${lineNum}`;
-                const originalParams = interactiveGraphParams[lineKey].original;
+                const lineKey = `line${lineNum}`; const originalParams = interactiveGraphParams[lineKey].original;
                 if (!originalParams) return;
-
-                // Restore the current parameters from the backup
                 Object.assign(interactiveGraphParams[lineKey], originalParams);
-
-                // Visually update the sliders
                 if (originalParams.type === 'slope_intercept') {
                     document.getElementById(`m${lineNum}_slider`).value = originalParams.m;
                     document.getElementById(`n${lineNum}_slider`).value = originalParams.n;
-                } else if (originalParams.type === 'vertical') {
-                    document.getElementById(`k${lineNum}_slider`).value = originalParams.k;
-                }
-
-                // Redraw everything
+                } else if (originalParams.type === 'vertical') document.getElementById(`k${lineNum}_slider`).value = originalParams.k;
                 updateInteractiveGraph();
             }
-
             function getEquationKatexString(lineNum, params) {
-                const color = lineNum === 1 ? 'azul' : 'roja';
-                const { type, m, n, k } = params;
-                if (type === 'slope_intercept') {
-                    const sign = n < 0 ? '-' : '+';
-                    const abs_n = Math.abs(n).toFixed(2);
-                    return `Recta ${lineNum} (${color}): $y = ${m.toFixed(2)}x ${sign} ${abs_n}$`;
-                }
-                if (type === 'vertical') {
-                    return `Recta ${lineNum} (${color}): $x = ${k.toFixed(2)}$`;
-                }
+                const color = lineNum === 1 ? 'azul' : 'roja'; const { type, m, n, k } = params;
+                if (type === 'slope_intercept') { const sign = n < 0 ? '-' : '+'; const abs_n = Math.abs(n).toFixed(2); return `Recta ${lineNum} (${color}): $y = ${m.toFixed(2)}x ${sign} ${abs_n}$`; }
+                if (type === 'vertical') { return `Recta ${lineNum} (${color}): $x = ${k.toFixed(2)}$`; }
                 return `Recta ${lineNum} (${color}): Ecuación inválida`;
             }
-
             function updateEquationText() {
-                 const eq1Text = getEquationKatexString(1, interactiveGraphParams.line1);
-                 const eq1Div = document.getElementById('eq1-text-display');
-                 if (eq1Div) {
-                     eq1Div.innerHTML = eq1Text;
-                     renderMathInElement(eq1Div);
-                 }
-
-                 const eq2Text = getEquationKatexString(2, interactiveGraphParams.line2);
-                 const eq2Div = document.getElementById('eq2-text-display');
-                 if(eq2Div) {
-                    eq2Div.innerHTML = eq2Text;
-                    renderMathInElement(eq2Div);
-                 }
+                 const eq1Text = getEquationKatexString(1, interactiveGraphParams.line1); const eq1Div = document.getElementById('eq1-text-display');
+                 if (eq1Div) { eq1Div.innerHTML = eq1Text; renderMathInElement(eq1Div); }
+                 const eq2Text = getEquationKatexString(2, interactiveGraphParams.line2); const eq2Div = document.getElementById('eq2-text-display');
+                 if(eq2Div) { eq2Div.innerHTML = eq2Text; renderMathInElement(eq2Div); }
             }
-            
             function updateInteractiveGraph() {
                 if (!chartInstance) return;
-
-                // 1. Read slider values and update params object
-                const ids = {m1: 'm1', n1: 'n1', k1: 'k1', m2: 'm2', n2: 'n2', k2: 'k2'};
-                for (const key in ids) {
-                    const slider = document.getElementById(`${ids[key]}_slider`);
-                    if (slider) {
+                // 1. Read slider values
+                ['m1', 'n1', 'k1', 'm2', 'n2', 'k2'].forEach(key => {
+                    const slider = document.getElementById(`${key}_slider`);
+                    if(slider) {
                         const value = parseFloat(slider.value);
-                        const line = key.includes('1') ? 'line1' : 'line2';
-                        const param = key.charAt(0);
-                        interactiveGraphParams[line][param] = value;
-                        document.getElementById(`${ids[key]}_value`).textContent = value.toFixed(2);
+                        interactiveGraphParams[key.includes('1') ? 'line1' : 'line2'][key.charAt(0)] = value;
+                        document.getElementById(`${key}_value`).textContent = value.toFixed(2);
                     }
-                }
-
-                // 2. Update equation text display
+                });
                 updateEquationText();
 
-                // 3. Calculate solution and case type from interactive params
-                let solution = null;
-                let caseType = '';
-                const p = interactiveGraphParams;
-                const { line1: l1, line2: l2 } = p;
-
+                // 2. Calculate solution and line data
+                let solution = null; let caseType = ''; const { line1: l1, line2: l2 } = interactiveGraphParams;
                 if (l1.type === 'slope_intercept' && l2.type === 'slope_intercept') {
-                    if (Math.abs(l1.m - l2.m) < 1e-9) { // Parallel or coincident
-                        caseType = Math.abs(l1.n - l2.n) < 1e-9 ? 'infinitas' : 'paralelas';
-                    } else { // Unique solution
-                        caseType = 'unica';
-                        const x = (l2.n - l1.n) / (l1.m - l2.m);
-                        const y = l1.m * x + l1.n;
-                        solution = { x, y };
-                    }
-                } else if (l1.type === 'slope_intercept' && l2.type === 'vertical') {
-                    caseType = 'unica';
-                    solution = { x: l2.k, y: l1.m * l2.k + l1.n };
-                } else if (l1.type === 'vertical' && l2.type === 'slope_intercept') {
-                     caseType = 'unica';
-                     solution = { x: l1.k, y: l2.m * l1.k + l2.n };
-                } else if (l1.type === 'vertical' && l2.type === 'vertical') {
-                    caseType = Math.abs(l1.k - l2.k) < 1e-9 ? 'infinitas' : 'paralelas';
-                }
-
-                // 4. Update chart datasets and title
-                const xRange = { min: chartInstance.scales.x.min, max: chartInstance.scales.x.max };
-                const yRange = { min: chartInstance.scales.y.min, max: chartInstance.scales.y.max };
+                    if (Math.abs(l1.m - l2.m) < 1e-9) { caseType = Math.abs(l1.n - l2.n) < 1e-9 ? 'infinitas' : 'paralelas'; }
+                    else { caseType = 'unica'; const x = (l2.n - l1.n) / (l1.m - l2.m); const y = l1.m * x + l1.n; solution = { x, y }; }
+                } else if (l1.type === 'slope_intercept' && l2.type === 'vertical') { caseType = 'unica'; solution = { x: l2.k, y: l1.m * l2.k + l1.n }; }
+                else if (l1.type === 'vertical' && l2.type === 'slope_intercept') { caseType = 'unica'; solution = { x: l1.k, y: l2.m * l1.k + l2.n }; }
+                else if (l1.type === 'vertical' && l2.type === 'vertical') { caseType = Math.abs(l1.k - l2.k) < 1e-9 ? 'infinitas' : 'paralelas'; }
+                
+                // 3. Update chart datasets
+                const xRange = { min: chartInstance.scales.x.min, max: chartInstance.scales.x.max }; const yRange = { min: chartInstance.scales.y.min, max: chartInstance.scales.y.max };
                 const generateLineData = (m, n, range) => [{x: range.min, y: m * range.min + n}, {x: range.max, y: m * range.max + n}];
                 const generateVerticalLineData = (k, range) => [{x: k, y: range.min}, {x: k, y: range.max}];
-                
-                // Update line data
-                if(l1.type === 'slope_intercept') chartInstance.data.datasets[0].data = generateLineData(l1.m, l1.n, xRange);
-                else if(l1.type === 'vertical') chartInstance.data.datasets[0].data = generateVerticalLineData(l1.k, yRange);
+                if(l1.type === 'slope_intercept') chartInstance.data.datasets[0].data = generateLineData(l1.m, l1.n, xRange); else if(l1.type === 'vertical') chartInstance.data.datasets[0].data = generateVerticalLineData(l1.k, yRange);
+                if(l2.type === 'slope_intercept') chartInstance.data.datasets[1].data = generateLineData(l2.m, l2.n, xRange); else if(l2.type === 'vertical') chartInstance.data.datasets[1].data = generateVerticalLineData(l2.k, yRange);
 
-                if(l2.type === 'slope_intercept') chartInstance.data.datasets[1].data = generateLineData(l2.m, l2.n, xRange);
-                else if(l2.type === 'vertical') chartInstance.data.datasets[1].data = generateVerticalLineData(l2.k, yRange);
-
-                // Update solution point and title
-                let chartTitle = 'Gráfico del Sistema';
-                chartInstance.data.datasets[2].data = []; // Clear previous solution
-                if (caseType === 'unica' && showSolutionCheckbox.checked) {
+                // 4. Update solution point & title
+                let chartTitle = 'Gráfico del Sistema'; chartInstance.data.datasets[2].data = [];
+                if (caseType === 'unica' && dom.showSolutionCheckbox.checked) {
                     chartInstance.data.datasets[2].data = [{x: solution.x, y: solution.y}];
                     chartTitle = `Punto de corte: (x=${solution.x.toFixed(2)}, y=${solution.y.toFixed(2)})`;
-                } else if (caseType === 'infinitas') {
-                    chartTitle = "Infinitas Soluciones: Las rectas son coincidentes.";
-                    chartInstance.data.datasets[1].borderDash = [5, 5];
-                } else if (caseType === 'paralelas') {
-                    chartTitle = "Sin Solución: Las rectas son paralelas.";
-                    chartInstance.data.datasets[1].borderDash = [];
-                }
-                 if(caseType !== 'infinitas') chartInstance.data.datasets[1].borderDash = [];
-
+                } else if (caseType === 'infinitas') { chartTitle = "Infinitas Soluciones: Las rectas son coincidentes."; }
+                else if (caseType === 'paralelas') { chartTitle = "Sin Solución: Las rectas son paralelas."; }
+                chartInstance.data.datasets[1].borderDash = (caseType === 'infinitas') ? [5, 5] : [];
                 chartInstance.options.plugins.title.text = chartTitle;
-                
-                // 5. Update chart
+
+                // 5. Update intercepts
+                chartInstance.data.datasets[3].data = [];
+                if(dom.showInterceptsCheckbox.checked) {
+                    const getIntercepts = (line) => {
+                        const intercepts = [];
+                        if(line.type === 'slope_intercept') {
+                            if(Math.abs(line.m) > 1e-9) intercepts.push({x: -line.n / line.m, y: 0}); // x-int
+                            intercepts.push({x: 0, y: line.n}); // y-int
+                        } else if(line.type === 'vertical') {
+                            intercepts.push({x: line.k, y: 0});
+                        }
+                        return intercepts;
+                    };
+                    chartInstance.data.datasets[3].data.push(...getIntercepts(l1), ...getIntercepts(l2));
+                }
+
                 chartInstance.update('none');
             }
+            function getActiveTab() { return document.querySelector('.tab-btn.active')?.dataset.tab || 'sustitucion'; }
+            
+            // --- Success Effects ---
+            function playSuccessSound() {
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                const now = Tone.now();
+                synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now);
+                synth.triggerAttackRelease(["E4", "G4", "C5", "E5"], "8n", now + 0.2);
+            }
 
+            function launchConfetti() {
+                const canvas = dom.confettiCanvas;
+                const ctx = canvas.getContext('2d');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
 
-            // --- Initial call to render math for any pre-loaded content ---
-            renderMathInElement(document.body);
+                const confettiCount = 200;
+                const confetti = [];
+                const colors = ['#f44336', '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a', '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722'];
+
+                for (let i = 0; i < confettiCount; i++) {
+                    confetti.push({
+                        x: Math.random() * canvas.width,
+                        y: Math.random() * canvas.height - canvas.height,
+                        size: Math.random() * 10 + 5,
+                        speed: Math.random() * 5 + 2,
+                        angle: Math.random() * Math.PI * 2,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        tilt: Math.random() * 10 - 5,
+                        tiltAngle: 0,
+                        tiltAngleIncrement: Math.random() * 0.1 + 0.05
+                    });
+                }
+
+                let startTime = null;
+                const duration = 3000; // 3 seconds
+
+                function animateConfetti(timestamp) {
+                    if (!startTime) startTime = timestamp;
+                    const progress = timestamp - startTime;
+                    
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    confetti.forEach(particle => {
+                        particle.y += particle.speed;
+                        particle.x += Math.sin(particle.angle);
+                        particle.tiltAngle += particle.tiltAngleIncrement;
+                        particle.angle += 0.01;
+                        
+                        ctx.save();
+                        ctx.fillStyle = particle.color;
+                        ctx.translate(particle.x + particle.size / 2, particle.y + particle.size / 2);
+                        ctx.rotate(particle.angle);
+                        ctx.fillRect(-particle.size / 2, -particle.size / 2, particle.size, particle.size);
+                        ctx.restore();
+                    });
+
+                    if (progress < duration) {
+                        requestAnimationFrame(animateConfetti);
+                    } else {
+                         ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    }
+                }
+                
+                requestAnimationFrame(animateConfetti);
+            }
         });
     </script>
 </body>
